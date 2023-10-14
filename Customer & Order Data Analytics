@@ -1,0 +1,63 @@
+--How many orders were placed in January?
+
+SELECT COUNT(orderid)
+FROM BIT_DB.JanSales
+WHERE length(orderid) = 6
+AND orderid <> 'Order ID';
+
+--How many of those orders were for an iPhone?
+
+SELECT COUNT(orderid)
+FROM BIT_DB.JanSales
+WHERE Product = 'iPhone'
+AND length(orderid) = 6
+AND orderid <> 'Order ID';
+
+--Select the customer account numbers for all the orders that were placed in February.
+
+SELECT 
+    acctnum
+FROM BIT_DB.customers c
+JOIN BIT_DB.FebSales f
+ON f.orderID = c.order_id
+WHERE length(orderid) = 6
+AND orderid <> 'Order ID';
+
+--Which product was the cheapest one sold in January, and what was the price?
+
+SELECT
+    DISTINCT Product,
+    price
+FROM BIT_DB.JanSales
+WHERE price = (SELECT MIN(price)
+                FROM BIT_DB.JanSales);
+
+--What is the total revenue for each product sold in January?
+
+SELECT 
+    SUM(Quantity)*price AS total_revenue,
+    product
+FROM BIT_DB.JanSales
+WHERE length(orderid) = 6;
+
+--Which products were sold in February at 548 Lincoln St, Seattle, WA 98101, how many of each were sold, and what was the total revenue?
+
+SELECT product,
+    SUM(Quantity) AS total_quantity,
+    location,
+    SUM(Quantity)*price AS total_revenue
+FROM BIT_DB.FebSales
+WHERE location = '548 Lincoln St, Seattle, WA 98101'
+GROUP BY product;
+
+--How many customers ordered more than 2 products at a time in February, and what was the average amount spent for those customers?
+
+SELECT
+    COUNT(DISTINCT c.acctnum) cust_count,
+    AVG(Quantity*price)
+FROM BIT_DB.FebSales f
+LEFT JOIN BIT_DB.customers c
+ON f.orderID = c.order_id
+WHERE f.Quantity > 2
+AND length(orderid) = 6
+AND orderid <> 'Order ID';
