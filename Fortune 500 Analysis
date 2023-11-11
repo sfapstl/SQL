@@ -1,4 +1,6 @@
---language: sql
+/*
+Working Platform:- MySQL
+*/
 
 CREATE TABLE fortune_companies (
     company_id INTEGER PRIMARY KEY,
