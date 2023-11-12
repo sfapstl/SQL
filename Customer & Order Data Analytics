@@ -1,11 +1,11 @@
-```mysql
 --How many orders were placed in January?
 
+```sql
 SELECT COUNT(orderid)
 FROM BIT_DB.JanSales
 WHERE length(orderid) = 6
 AND orderid <> 'Order ID';
-
+```
 --How many of those orders were for an iPhone?
 
 SELECT COUNT(orderid)
@@ -120,4 +120,4 @@ FROM BIT_DB.JanSales
 GROUP BY Product
 ORDER BY revenue DESC
 LIMIT 1;
-```
+
