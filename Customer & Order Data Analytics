@@ -1,4 +1,4 @@
-```SQL
+```mysql
 --How many orders were placed in January?
 
 SELECT COUNT(orderid)
