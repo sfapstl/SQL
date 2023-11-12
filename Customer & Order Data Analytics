@@ -1,5 +1,4 @@
-```sql
-
+```SQL
 --How many orders were placed in January?
 
 SELECT COUNT(orderid)
@@ -121,5 +120,4 @@ FROM BIT_DB.JanSales
 GROUP BY Product
 ORDER BY revenue DESC
 LIMIT 1;
-
 ```
