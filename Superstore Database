@@ -1,3 +1,5 @@
+# This project utilizes the following Superstore data:
+
 CREATE TABLE superstore (
     item_id INTEGER PRIMARY KEY,
     item_name TEXT,
@@ -25,26 +27,38 @@ VALUES
     (14, 'Cutlery Set', 'Kitchen Supplies', 34.50, 40, 4.4),
     (15, 'Cozy Throw Blanket', 'Furnishings', 24.99, 100, 4.2);
 
-#1
+# The following SQL was written to retrieve specific information about items in the Superstore:
+
+# 1. Use a SELECT statement to show all information on the items in descending order by price
+
 SELECT *
 FROM superstore
 ORDER BY price DESC;
 
-#2
-SELECT MAX(price)
+# 2. Identify the price of the item with the highest price in the Superstore
+
+SELECT 
+    MAX(price)
 FROM superstore;
 
-#3
-SELECT MIN(price)
+# 3. Identify the price of the item with the lowest price in the Superstore
+
+SELECT 
+    MIN(price)
 FROM superstore;
 
-#4
-SELECT AVG(price)
+# 4. Identify the average price of items under the category of 'Kitchen Supplies'
+
+SELECT 
+    AVG(price)
 FROM superstore
 WHERE category = 'Kitchen Supplies';
 
-#5
-SELECT category, COUNT(item_id) AS item_count, AVG(price)
+# 5. Using GROUP BY, identify the number of items per category and the average price of all items in each category
+
+SELECT 
+    category, 
+    COUNT(item_id) AS item_count, 
+    AVG(price) AS avg_price
 FROM superstore
-WHERE category = 'Electronics'
 GROUP BY category;
