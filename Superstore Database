@@ -62,3 +62,16 @@ SELECT
     AVG(price) AS avg_price
 FROM superstore
 GROUP BY category;
+
+# 6. Write a query showing the number of items per category with prices lower than the average price
+
+SELECT
+  category,
+  COUNT(item_id) AS item_count
+FROM superstore
+WHERE price < (
+               SELECT
+                 AVG(price) as avg_price
+               FROM superstore
+               )
+ GROUP BY category;
