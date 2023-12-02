@@ -1,3 +1,5 @@
+# This project utilizes the following data from Fortune 500 companies:
+
 CREATE TABLE fortune_companies (
     company_id INTEGER PRIMARY KEY,
     company_name TEXT,
@@ -56,38 +58,56 @@ VALUES
     ('Company JJ', 'Manufacturing', 370.0, 3100, 1, 20, 12, 7.6),
     ('Company KK', 'Healthcare', 150.2, 3400, 0, 16, 8, 5.3);
 
-SELECT *
-FROM fortune_companies;
+# The following SQL was written to obtain information about the companies and industries in the database
 
-SELECT AVG(employees) AS avg_employees, industry
+# 1. Write a query that shows the average number of employees per industry in ascending order
+
+SELECT 
+    industry,
+    AVG(employees) AS avg_employees
 FROM fortune_companies
 GROUP BY industry
-ORDER BY avg_employees ASC;
+ORDER BY avg_employees;
 
-SELECT industry, AVG(revenue) AS avg_revenue
+# 2. Write a query that shows the average revenue per industry with an average revenue greater than 150
+
+SELECT 
+    industry, 
+    ROUND(AVG(revenue), 2) AS avg_revenue
 FROM fortune_companies
 GROUP BY industry
 HAVING avg_revenue > 150
 ORDER BY avg_revenue DESC;
 
-SELECT industry, company_name,
-  CASE
-    WHEN maternity_leave_weeks >= 18 THEN 'ILO Standard Maternity Leave'
-    WHEN maternity_leave_weeks > 14 THEN 'Adequate Maternity Leave'
-    WHEN maternity_leave_weeks = 14 THEN 'Minimum Recommended Maternity Leave'
-    WHEN maternity_leave_weeks < 14 THEN 'Below Standard Maternity Leave'
+# 3. Write a query that shows maternity leave assessments per company in the tech, finance, and manufacturing industries according to ILO standards
+
+SELECT 
+    company_name,
+    CASE
+        WHEN maternity_leave_weeks >= 18 THEN 'ILO Standard Maternity Leave'
+        WHEN maternity_leave_weeks > 14 THEN 'Adequate Maternity Leave'
+        WHEN maternity_leave_weeks = 14 THEN 'Minimum Recommended Maternity Leave'
+        WHEN maternity_leave_weeks < 14 THEN 'Below Standard Maternity Leave'
     END AS maternity_leave_standards
 FROM fortune_companies
-WHERE industry IN ('Technology', 'Finance', 'Manufacturing')
-ORDER BY industry ASC, maternity_leave_standards ASC;
+WHERE industry IN ('Technology', 'Finance', 'Manufacturing');
 
-SELECT company_name, industry, ROUND(avg_employee_tenure)
+# 4. Write a query that shows the company name and its industry with the average employee tenure in companies with healthcare benefits, PTO greater than 15 days, and maternity leave greater than 14 weeks
+
+SELECT 
+    company_name, 
+    industry, 
+    ROUND(avg_employee_tenure)
 FROM fortune_companies
 WHERE healthcare_benefits = 1 
 AND paid_time_off_days > 15
 AND maternity_leave_weeks > 14;
 
-SELECT COUNT(*), industry, ROUND(AVG(avg_employee_tenure))
+# 5. Write a query that shows the number of companies and average employee tenure per industry having no healthcare benefits, PTO less than 15 days, and maternity leave less than 14 weeks
+SELECT 
+    industry, 
+    COUNT(company_id) AS company_count,
+    ROUND(AVG(avg_employee_tenure))
 FROM fortune_companies
 WHERE healthcare_benefits = 0 
 AND paid_time_off_days < 15
