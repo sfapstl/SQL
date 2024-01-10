@@ -1,0 +1,137 @@
+*** NOTE: This project is still ongoing and under construction ***
+
+Data Analysis and Business Intelligence Project | MySQL Workbench
+
+In this project, I will be roleplaying as a a newly hired Database Analyst for Maven Fuzzy Factory, 
+an eCommerce start-up, and will be working directly with the CEO, Marketing Director and Website Manager 
+to help grow the business and analyze performance along the way 
+
+Screenshots of datasets are available through this link : 
+
+Business Concepts covered :  
+Traffic Source Analysis |  Landing Page Performance & Testing |  Channel Portfolio Optimization |  Product Level Website Analysis |  Analyze Repeat Behavior  
+
+
+The database has 6 tables representing data from March 2012 – May 2015 
+
+	Order_item_refunds 
+
+	Order_items 
+
+	Orders 
+
+	Products 
+
+	Website_pageviews 
+
+	Website_sessions 
+
+Source:  
+https://www.udemy.com/course/advanced-sql-mysql-for-analytics-business-intelligence/?src=sac&kw=advance+sql
+
+------------------------------------------ SECTION ONE : ANALYZING TRAFFIC SOURCES --------------------------------------------------
+
+# Assignment 1.1 : Identifying top traffic sources in terms of website sessions, grouped by UTM source, campaign, and referring domain
+
+SELECT
+          utm_source,
+          utm_campaign,
+          http_referer,
+          COUNT(DISTINCT website_session_id) AS sessions
+FROM 
+          website_sessions
+WHERE 
+          created_at < '2012-04-12'
+GROUP BY 
+          1, 
+          2, 
+          3
+ORDER BY 4 DESC;
+
+
+# Assignment 1.2 : Calculate conversion rates from sessions to orders up until 2012-04-14
+
+SELECT
+          COUNT(DISTINCT website_sessions.website_session_id) AS sessions,
+          COUNT(DISTINCT orders.order_id) AS orders,
+          COUNT(DISTINCT orders.order_id) / COUNT(DISTINCT website_sessions.website_session_id) AS session_to_order_conv_rate
+FROM 
+          website_sessions
+LEFT JOIN 
+          orders
+          ON website_sessions.website_session_id = orders.website_session_id
+WHERE 
+          website_sessions.created_at < '2012-04-14'
+	        AND utm_source = 'gsearch'
+	        AND utm_campaign = 'nonbrand';
+
+-- Based on this analysis, Marketing is overspending based on the conversion rate (less than 4%), 
+  recommend Marketing Director to dial down on search bids, thereby reducing company costs
+
+
+# Assignment 1.3 : Based on the previous analysis, Marketing bid down on gsearch nonbrand (utm source and campaign) last 2012-04-15.
+Pull gsearch nonbrand trended session volume by week to see if these bid changes have caused volume to drop.
+
+SELECT
+          MIN(DATE(created_at)) AS week_start_date,
+          COUNT(DISTINCT website_session_id) AS sessions
+FROM 
+          website_sessions
+WHERE 
+          created_at < '2012-05-10' -- date of receipt of assignment
+	        AND utm_source = 'gsearch'
+	        AND utm_campaign = 'nonbrand'
+GROUP BY 
+	        YEAR(created_at),
+          WEEK(created_at);
+
+-- UTM source gsearch seems fairly sensitive to bid changes since the number of sessions have dropped.
+Moving forward, need to think of ways to make campaigns more efficient to maximize volume while saving costs
+
+
+# Assignment 1.4 : Bid Optimization for Paid Traffic. Investigate conversion rates from sessions to orders by device type (desktop or mobile)
+to determine whether we need to bid up on either
+
+SELECT
+	        device_type,
+          COUNT(DISTINCT website_sessions.website_session_id) AS sessions,
+          COUNT(DISTINCT orders.order_id) AS orders,
+          COUNT(DISTINCT orders.order_id) / COUNT(DISTINCT website_sessions.website_session_id) AS session_to_order_conv_rate
+FROM 
+          website_sessions
+LEFT JOIN 
+          orders
+	        ON website_sessions.website_session_id = orders.website_session_id
+WHERE 
+          website_sessions.created_at < '2012-05-11'
+        	AND utm_source = 'gsearch'
+        	AND utm_campaign = 'nonbrand'
+GROUP BY 
+          1;
+
+-- Result: desktop sessions have 3.7% conversion rate versus mobile at only 1%
+-- Recommend to increase bids on desktop to rank higher in auctions and lead to sales boosts
+
+
+# Assignment 4.5 : Trending with Granular Segments. Based on the previous analysis, gsearch nonbrand campaigns
+were bid up on 2012-05-19. Pull weekly trends for both desktop and mobile to see the impact on volume. 
+Use 2012-04-15 until the bid change as the baseline.
+
+SELECT
+	        MIN(DATE(created_at)) AS week_start_date,
+          COUNT(CASE WHEN device_type = 'desktop' THEN website_session_id ELSE NULL END) AS dtop_sessions,
+          COUNT(CASE WHEN device_type = 'mobile' THEN website_session_id ELSE NULL END) AS mob_sessions
+FROM 
+          website_sessions
+WHERE 
+          created_at BETWEEN '2012-04-15' AND '2012-06-09'
+	        AND utm_source = 'gsearch'
+          AND utm_campaign = 'nonbrand'
+GROUP BY
+          YEAR(created_at),
+          WEEK(created_at);
+
+-- Desktop performance is looking strong due to bid changes based on the previous conversion analysis. 
+
+
+------------------------------------------ SECTION TWO : ANALYZING TRAFFIC SOURCES --------------------------------------------------
