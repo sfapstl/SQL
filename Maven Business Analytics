@@ -128,10 +128,130 @@ WHERE
 	        AND utm_source = 'gsearch'
           AND utm_campaign = 'nonbrand'
 GROUP BY
-          YEAR(created_at),
+	  YEAR(created_at),
           WEEK(created_at);
 
 -- Desktop performance is looking strong due to bid changes based on the previous conversion analysis. 
 
 
------------------------------------------- SECTION TWO : ANALYZING TRAFFIC SOURCES --------------------------------------------------
+------------------------------------------ SECTION TWO : ANALYZING WEBSITE PERFORMANCE --------------------------------------------------
+
+# Assignment 2.1 : Finding top website pages. Pull the most viewed website pages ranked by session volume
+
+SELECT
+          pageview_url,
+          COUNT(DISTINCT website_pageview_id) AS pageviews
+FROM 
+	  website_pageviews
+WHERE 
+	  created_at < '2012-06-09'
+GROUP BY 
+	  pageview_url
+ORDER BY 
+	  pageviews DESC;
+
+-- The homepage, products page, and Mr. Fuzzy page receive the most traffic
+
+
+# Assignment 2.2 : Finding top entry pages. Pull all entry or landing pages and rank them on entry volume
+
+-- First, return the first pageview for each website session and transform the query result into a temporary table
+
+CREATE TEMPORARY TABLE entry_pageviews
+SELECT
+	  website_session_id,
+	  MIN(website_pageview_id) AS entry_pageview_id
+FROM 
+	  website_pageviews
+WHERE 
+	  created_at < '2012-06-12'
+GROUP BY 
+	  website_session_id;
+
+-- end of temp table
+
+-- Then query the temporary table to return the landing pages with their session volume 
+
+SELECT
+	  pageview_url AS landing_page,
+	  COUNT(DISTINCT entry_pageviews.website_session_id) AS sessions_hitting_landing_page
+FROM 
+	  entry_pageviews
+LEFT JOIN 
+	  website_pageviews
+	  ON entry_pageviews.entry_pageview_id = website_pageviews.website_pageview_id
+GROUP BY 
+	  pageview_url;
+
+-- It looks like all traffic comes through the /home page at this point in time
+
+
+# Assignment 2.3 : Calculating Bounce Rates. Pull the bounce rates for traffic landing on the /home page. 
+Show sessions, bounced sessions, and the bounce rate.
+
+-- First, create a temporary table grouping website sessions with their first pageviews
+CREATE TEMPORARY TABLE first_pgviews
+SELECT
+	  website_session_id,
+	  MIN(website_pageview_id) AS first_pageview_id
+FROM 
+	  website_pageviews
+WHERE 
+	  created_at < '2012-06-14'
+GROUP BY 
+	  website_session_id;
+-- end of temp table
+
+-- Second, create a temporary table showing website sessions with the landing page (first pageview)
+CREATE TEMPORARY TABLE sessions_w_home_landing_page
+SELECT
+	  first_pgviews.website_session_id,
+	  website_pageviews.pageview_url AS landing_page
+FROM 
+	  first_pgviews
+LEFT JOIN 
+	  website_pageviews
+	  ON first_pgviews.first_pageview_id = website_pageviews.website_pageview_id
+WHERE 
+	  pageview_url = '/home';
+-- end of temp table
+
+-- Third, create a temporary table with the bounce sessions for the /home page or those website sessions that did
+go further than the /home page or stopped at the /home page
+CREATE TEMPORARY TABLE bounced_sessions
+SELECT
+	  sessions_w_home_landing_page.website_session_id,
+	  sessions_w_home_landing_page.landing_page,
+	  COUNT(website_pageviews.website_pageview_id) AS count_pages_viewed
+FROM 
+	  sessions_w_home_landing_page
+LEFT JOIN 
+	  website_pageviews
+	  ON sessions_w_home_landing_page.website_session_id = website_pageviews.website_session_id
+GROUP BY 
+	  sessions_w_home_landing_page.website_session_id,
+	  sessions_w_home_landing_page.landing_page
+HAVING 
+	  COUNT(website_pageviews.website_pageview_id) = 1 -- bounce sessions are those whose pageview count is 1;
+-- end of temp table
+
+-- Calculate the bounce sessions and bounce rate by left joining the two previous temporary tables
+SELECT
+	  COUNT(sessions_w_home_landing_page.website_session_id) AS sessions,
+	  COUNT(bounced_sessions.website_session_id) AS bounced_sessions,
+	  COUNT(bounced_sessions.website_session_id) / 
+	  	COUNT(sessions_w_home_landing_page.website_session_id) AS bounce_rate
+FROM 
+	  sessions_w_home_landing_page
+LEFT JOIN 
+	  bounced_sessions
+	  ON sessions_w_home_landing_page.website_session_id = bounced_sessions.website_session_id;
+
+-- From this analysis, there is a high bounce rate at almost 60% for paid search w/c should be high-quality traffic
+-- Keep an eye on bounce rates, which represent a major area of improvement 
+-- Help the Website Manager measure and analyze a new page that she thinks will improve performance, and analyze the results of an A/B split test against the homepage
+
+
+# Assignment 2.4 : Analyzing Landing Page Tests. Based on the analysis, a new custom landing page called /lander-1
+was run in a 50/50 test against the homepage (/home) for gsearch non-brand traffic. Pull the bounce rates for the 
+two groups to evaluate the new page. Just look at the time period where /lander-1 was getting traffic.
