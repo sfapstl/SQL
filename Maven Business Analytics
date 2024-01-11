@@ -339,7 +339,7 @@ GROUP BY 1;
 -- Keep an eye on bounce rates and help the team look for other areas to test and optimize
 
 
-# Assignment 4.5 : Landing Page Trend Analysis. Pull the volume of paid search nonbrand traffic landing on 
+# Assignment 2.5 : Landing Page Trend Analysis. Pull the volume of paid search nonbrand traffic landing on 
 /home and /lander-1 trended weekly from 2012-06-01 and 2012-08-31, and pull overall paid search bounce
 rate trended weekly as well
 
@@ -414,4 +414,159 @@ GROUP BY
 	  YEARWEEK(website_pageviews.created_at);
 
 
---------------------------------------------- SECTION THREE : BUILDING CONVERSION FUNNELS ------------------------------------------------------
+# Assignment 2.6 : Building Conversion Funnels. The Website Manager wants to understand where we lose gsearch visitors 
+between /lander-1 and placing an order. Build a full conversion funnel, analyzing how many customers make it to each step.
+Start with /lander-1 to the thank you page. Use data since August 5 to September 5, 2012.
+
+-- First, gather the relevant sessions and track pageviews visited using CASE WHEN and use this query as a subquery
+-- Second, create a temporary table showing the conversion funnel per website session using the subquery
+CREATE TEMPORARY TABLE session_level_made_it_flags
+SELECT
+	  website_session_id,
+	  -- pageview_url,
+	  MAX(lander_page) AS lander_made_it,
+	  MAX(products_page) AS products_made_it,
+	  MAX(mrfuzzy_page) AS mrfuzzy_made_it,
+	  MAX(cart_page) AS cart_made_it,
+	  MAX(shipping_page) AS shipping_made_it,
+	  MAX(billing_page) AS billing_made_it,
+	  MAX(thankyou_page) AS thankyou_made_it
+FROM (
+	SELECT
+		  website_sessions.website_session_id,
+	    	  website_pageviews.pageview_url,
+		  website_pageviews.created_at,
+		  CASE WHEN website_pageviews.pageview_url = '/lander-1' THEN 1 ELSE 0 END AS lander_page,
+		  CASE WHEN website_pageviews.pageview_url = '/products' THEN 1 ELSE 0 END AS products_page,
+		  CASE WHEN website_pageviews.pageview_url = '/the-original-mr-fuzzy' THEN 1 ELSE 0 END AS mrfuzzy_page,
+		  CASE WHEN website_pageviews.pageview_url = '/cart' THEN 1 ELSE 0 END AS cart_page,
+		  CASE WHEN website_pageviews.pageview_url = '/shipping' THEN 1 ELSE 0 END AS shipping_page,
+		  CASE WHEN website_pageviews.pageview_url = '/billing' THEN 1 ELSE 0 END AS billing_page,
+		  CASE WHEN website_pageviews.pageview_url = '/thank-you-for-your-order' THEN 1 ELSE 0 END AS thankyou_page
+	FROM 
+		  website_sessions
+	LEFT JOIN 
+		  website_pageviews
+		  ON website_sessions.website_session_id = website_pageviews.website_session_id
+	WHERE 
+		  website_sessions.created_at BETWEEN '2012-08-05' AND '2012-09-05'
+		  AND website_sessions.utm_source = 'gsearch'
+		  AND website_sessions.utm_campaign = 'nonbrand'
+	ORDER BY 
+		  website_sessions.website_session_id,
+		  website_sessions.created_at
+) AS pageview_level
+
+GROUP BY 1;
+-- end of temp table
+
+-- Third, calculate the click through rates from the temporary table
+SELECT
+	 -- COUNT(website_session_id) AS sessions,
+	 -- COUNT(lander_made_it),
+	 COUNT(DISTINCT CASE WHEN products_made_it = 1 THEN website_session_id ELSE NULL END)
+		/ COUNT(website_session_id) AS lander_click_rt,
+	 COUNT(DISTINCT CASE WHEN mrfuzzy_made_it = 1 THEN website_session_id ELSE NULL END)
+		/ COUNT(DISTINCT CASE WHEN products_made_it = 1 THEN website_session_id ELSE NULL END) AS products_click_rt,
+	 COUNT(DISTINCT CASE WHEN cart_made_it = 1 THEN website_session_id ELSE NULL END)
+		/ COUNT(DISTINCT CASE WHEN mrfuzzy_made_it = 1 THEN website_session_id ELSE NULL END) AS mrfuzzy_click_rt,
+	 COUNT(DISTINCT CASE WHEN shipping_made_it = 1 THEN website_session_id ELSE NULL END)
+		/ COUNT(DISTINCT CASE WHEN cart_made_it = 1 THEN website_session_id ELSE NULL END) AS cart_click_rt,
+	 COUNT(DISTINCT CASE WHEN billing_made_it = 1 THEN website_session_id ELSE NULL END)
+		/ COUNT(DISTINCT CASE WHEN shipping_made_it = 1 THEN website_session_id ELSE NULL END) AS shipping_click_rt,
+	 COUNT(DISTINCT CASE WHEN  thankyou_made_it = 1 THEN website_session_id ELSE NULL END)
+		/ COUNT(DISTINCT CASE WHEN billing_made_it = 1 THEN website_session_id ELSE NULL END) AS billing_click_rt
+FROM 
+	 session_level_made_it_flags;
+
+-- Based on this analysis, I would recommend the Website Manager to focus on the lander, Mr. Fuzzy page, 
+and the billing page which have the lowest click rates
+
+
+# Assignment 2.7 : Analyzing Conversion Funnel Tests. Website Manager created a new billing test page called /billing-2.  
+Determine whether /billing-2 is doing better than original /billing page. What percent of sessions on those pages end up 
+placing an order for all traffic, not just search visitors?
+
+-- First, find the first instance where /billing-2 was viewed to set the analysis timeframe
+SELECT
+	 MIN(website_pageview_id) AS first_pv
+FROM 
+	 website_pageviews
+WHERE 
+	 pageview_url = '/billing-2';
+-- first pageview id = 53550
+
+-- Second, retrieve the relevant pageview urls, sessions, and orders and use the query result as a subquery
+-- Third, calculate the session to order conversion rates for the different billing pages
+SELECT
+	 billing_version_seen,
+	 COUNT(DISTINCT website_session_id) AS sessions,
+	 COUNT(DISTINCT order_id) AS orders,
+	 COUNT(DISTINCT order_id) / COUNT(DISTINCT website_session_id) AS billing_to_order_rate
+FROM (
+	SELECT
+		 website_pageviews.pageview_url AS billing_version_seen,
+		 website_pageviews.website_session_id,
+		 orders.order_id
+	FROM 
+		 website_pageviews
+	LEFT JOIN 
+		 orders
+		 ON website_pageviews.website_session_id = orders.website_session_id
+	WHERE 
+		 website_pageviews.pageview_url IN ('/billing', '/billing-2')
+		 AND website_pageviews.website_pageview_id >= 53550
+		 AND website_pageviews.created_at < '2012-11-10'
+) AS billing_sessions_w_orders
+
+GROUP BY 1;
+
+-- From this analysis, it seems that the new billing page is doing a better job at converting sessions to orders
+
+------------------------------------------ SECTION THREE : ANALYSIS FOR CHANNEL PORTFOLIO MANAGEMENT --------------------------------------------------
+
+# Assignment 3.1 : Analyzing Channel Portfolios. With gsearch doing well and the site performing better, 
+a second paid search channel, "bsearch", was launched around August 22, 2012. Pull weekly trended session 
+volume since then and compare to gsearch nonbrand.
+
+SELECT
+	 MIN(DATE(created_at)) AS week_start_date,
+	 COUNT(DISTINCT website_session_id) AS total_sessions,
+	 COUNT(DISTINCT CASE WHEN utm_source = 'gsearch' THEN website_session_id ELSE NULL END) AS gsearch_sessions,
+	 COUNT(DISTINCT CASE WHEN utm_source = 'bsearch' THEN website_session_id ELSE NULL END) AS bsearch_sessions
+FROM
+	 website_sessions
+WHERE 
+	 created_at BETWEEN '2012-08-22' AND '2012-11-29'
+	 AND utm_campaign = 'nonbrand'
+GROUP BY 
+	 YEARWEEK(created_at);
+
+-- bsearch gets roughly a third of the traffic of gsearch, which is significant enough to be better acquainted with the new channel
+
+
+# Assignment 3.2 : Comparing Channel Characteristics. Pull the percentage of traffic coming on mobile 
+from bsearch and compare to gsearch, aggregate data since August 22.
+
+SELECT
+	 utm_source,
+	 COUNT(DISTINCT website_session_id) AS total_sessions,
+	 COUNT(DISTINCT CASE WHEN device_type = 'mobile' THEN website_session_id ELSE NULL END) AS mobile_sessions,
+	 COUNT(DISTINCT CASE WHEN device_type = 'mobile' THEN website_session_id ELSE NULL END) / 
+		COUNT(DISTINCT website_session_id) AS pct_mobile
+FROM 
+	 website_sessions
+WHERE
+	 created_at BETWEEN '2012-08-22' AND '2012-11-29'
+	 AND utm_campaign = 'nonbrand'
+	 AND utm_source IN ('gsearch', 'bsearch')
+GROUP BY
+	 utm_source;
+
+-- It looks like the two channels are quite different from a device standpoint, investigate further
+
+# Assignment 3.3 : Cross-Channel Bid Optimization. Pull nonbrand conversion rates from session to order 
+for gsearch and bsearch, and slice the data by device type. Analyze data from August 22 to September 18, 
+a special pre-holiday campaign for gsearch started on September 19 so limit to before this date. 
+
+
