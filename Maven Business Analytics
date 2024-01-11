@@ -565,8 +565,156 @@ GROUP BY
 
 -- It looks like the two channels are quite different from a device standpoint, investigate further
 
+
 # Assignment 3.3 : Cross-Channel Bid Optimization. Pull nonbrand conversion rates from session to order 
 for gsearch and bsearch, and slice the data by device type. Analyze data from August 22 to September 18, 
 a special pre-holiday campaign for gsearch started on September 19 so limit to before this date. 
 
+SELECT
+	 device_type,
+	 utm_source,
+	 COUNT(DISTINCT website_sessions.website_session_id) AS sessions,
+	 COUNT(DISTINCT orders.order_id) AS orders,
+	 COUNT(DISTINCT orders.order_id) / 
+		COUNT(DISTINCT website_sessions.website_session_id) AS conv_rate
+FROM
+	 website_sessions
+LEFT JOIN
+	 orders
+	 ON orders.website_session_id = website_sessions.website_session_id
+WHERE
+	 website_sessions.created_at BETWEEN '2012-08-22' AND '2012-09-18'
+	 AND utm_campaign = 'nonbrand'
+GROUP BY
+	 1, 2;
+
+-- The campaigns don't perform the same, gsearch outperforms bsearch on both mobile and desktop 
+-- Recommend Marketing Director to bid down on bsearch based on its underperformance
+
+
+# Assignment 3.4 : Analyzing Channel Portfolio Trends. Based on previous analysis, Marketing bid down 
+on bsearch nonbrand on December 2nd. Pull weekly session volume for gsearch and bsearch nonbrand, 
+broken down by device, since November 4. Include a comparison metric to show bsearch as a percent of gsearch for each device.
+
+SELECT
+	 MIN(DATE(created_at)) AS week_start_date,
+	 COUNT(DISTINCT CASE WHEN utm_source = 'gsearch' AND device_type = 'desktop' THEN website_session_id ELSE NULL END) AS g_dtop_sessions,
+	 COUNT(DISTINCT CASE WHEN utm_source = 'bsearch' AND device_type = 'desktop' THEN website_session_id ELSE NULL END) AS b_dtop_sessions,
+	 COUNT(DISTINCT CASE WHEN utm_source = 'bsearch' AND device_type = 'desktop' THEN website_session_id ELSE NULL END) /
+		COUNT(DISTINCT CASE WHEN utm_source = 'gsearch' AND device_type = 'desktop' THEN website_session_id ELSE NULL END) AS b_pct_of_g_dtop,
+	 COUNT(DISTINCT CASE WHEN utm_source = 'gsearch' AND device_type = 'mobile' THEN website_session_id ELSE NULL END) AS g_mob_sessions,
+	 COUNT(DISTINCT CASE WHEN utm_source = 'bsearch' AND device_type = 'mobile' THEN website_session_id ELSE NULL END) AS b_mob_sessions,
+	 COUNT(DISTINCT CASE WHEN utm_source = 'bsearch' AND device_type = 'mobile' THEN website_session_id ELSE NULL END) /
+		COUNT(DISTINCT CASE WHEN utm_source = 'gsearch' AND device_type = 'mobile' THEN website_session_id ELSE NULL END) AS b_pct_of_d_mob
+FROM
+	 website_sessions
+WHERE
+	 created_at BETWEEN '2012-11-4' AND '2012-12-22'
+GROUP BY 
+	 YEARWEEK(created_at);
+
+-- bsearch traffic was slightly down 
+-- gsearch dropped too after Black Friday and Cyber Monday but less compared to bsearch; this is alright given the low conversion rate
+
+
+# Assignment 3.5 : Analyzing Direct Traffic. A potential investor is curious whether any brand momentum 
+is being built or will the company keep relying on paid traffic. Pull organic search, direct type in, 
+and paid brand search sessions by month, and show those sessions as a percentage of paid search nonbrand.
+
+SELECT
+	 YEAR(created_at) AS yr,
+	 MONTH(created_at) AS mo,
+	 COUNT(DISTINCT CASE WHEN utm_campaign = 'nonbrand' THEN website_session_id ELSE NULL END) AS nonbrand_sessions,
+	 COUNT(DISTINCT CASE WHEN utm_campaign = 'brand' THEN website_session_id ELSE NULL END) AS brand_sessions,
+	 COUNT(DISTINCT CASE WHEN utm_campaign = 'brand' THEN website_session_id ELSE NULL END) /
+		COUNT(DISTINCT CASE WHEN utm_campaign = 'nonbrand' THEN website_session_id ELSE NULL END) AS brand_pct_of_nonbrand,
+	 COUNT(DISTINCT CASE WHEN utm_source IS NULL AND http_referer IS NULL THEN website_session_id ELSE NULL END) AS direct_type_in,
+	 COUNT(DISTINCT CASE WHEN utm_source IS NULL AND http_referer IS NULL THEN website_session_id ELSE NULL END) /
+		COUNT(DISTINCT CASE WHEN utm_campaign = 'nonbrand' THEN website_session_id ELSE NULL END) AS direct_pct_of_nonbrand,
+	 COUNT(DISTINCT CASE WHEN utm_source IS NULL AND http_referer IS NOT NULL THEN website_session_id ELSE NULL END) AS organic,
+	 COUNT(DISTINCT CASE WHEN utm_source IS NULL AND http_referer IS NOT NULL THEN website_session_id ELSE NULL END) /
+		COUNT(DISTINCT CASE WHEN utm_campaign = 'nonbrand' THEN website_session_id ELSE NULL END) AS organic_pct_of_nonbrand
+FROM
+	 website_sessions
+WHERE 
+	 created_at <= '2012-12-23'
+GROUP BY
+	 1, 2;
+
+-- brand, direct, and organic volumes are increasing and also growing as a percentage of paid traffic volume
+
+
+------------------------------------------ SECTION FOUR : ANALYZING BUSINESS PATTERNS AND SEASONALITY --------------------------------------------------
+
+# Assignment 4.1 : Analyzing Seasonality. Look at 2012 monthly and weekly volume patterns to identify 
+any seasonal trends to plan for 2013. Pull session volume and order volume.
+
+-- Note: Two separate queries are being requested
+
+-- First, pull monthly session and order volume patterns
+SELECT
+	 YEAR(website_sessions.created_at) AS year,
+	 MONTH(website_sessions.created_at) AS month,
+	 COUNT(DISTINCT website_sessions.website_session_id) AS sessions,
+	 COUNT(DISTINCT orders.order_id) AS orders
+FROM 
+	 website_sessions
+LEFT JOIN 
+	 orders
+	 ON orders.website_session_id = website_sessions.website_session_id
+WHERE 
+	 website_sessions.created_at < '2013-01-01'
+GROUP BY
+	1, 2;
+
+-- Second, pull weekly session and order volume patterns
+SELECT
+	 MIN(DATE(website_sessions.created_at)) AS week_start_date,
+	 COUNT(DISTINCT website_sessions.website_session_id) AS sessions,
+	 COUNT(DISTINCT orders.order_id) AS orders
+FROM 
+	 website_sessions
+LEFT JOIN 
+	 orders
+	 ON orders.website_session_id = website_sessions.website_session_id
+WHERE 
+	 website_sessions.created_at < '2013-01-01'
+GROUP BY
+	 YEARWEEK(website_sessions.created_at);
+
+-- Business grew steadily all year, significant volume in the holiday months, especially Black Friday and Cyber Monday weeks
+-- Think about planning ahead in terms of customer support and inventory management during these periods this 2013
+
+
+# Assignment 4.2 : Analyzing Business Patterns. In considering the decision to add live chat support to 
+improve customer experience, analyze the average website session volume, by hour of fay and by day week, 
+to staff appropriately. Date range: September 15 -Nov 15, 2012 to avoid the holiday time period.
+
+SELECT
+	 hr,
+	 ROUND(AVG(DISTINCT CASE WHEN wkday = 0 THEN website_sessions ELSE NULL END), 1) AS mon,
+	 ROUND(AVG(DISTINCT CASE WHEN wkday = 1 THEN website_sessions ELSE NULL END), 1) AS tue,
+	 ROUND(AVG(DISTINCT CASE WHEN wkday = 2 THEN website_sessions ELSE NULL END), 1) AS wed,
+	 ROUND(AVG(DISTINCT CASE WHEN wkday = 3 THEN website_sessions ELSE NULL END), 1) AS thu,
+	 ROUND(AVG(DISTINCT CASE WHEN wkday = 4 THEN website_sessions ELSE NULL END), 1) AS fri,
+	 ROUND(AVG(DISTINCT CASE WHEN wkday = 5 THEN website_sessions ELSE NULL END), 1) AS sat,
+	 ROUND(AVG(DISTINCT CASE WHEN wkday = 6 THEN website_sessions ELSE NULL END), 1) AS sun
+FROM (
+	SELECT
+		 DATE(created_at) AS created_date,
+		 WEEKDAY(created_at) AS wkday,
+		 HOUR(created_at) AS hr,
+		 COUNT(DISTINCT website_session_id) AS website_sessions
+	FROM 
+		 website_sessions
+	WHERE 
+		 created_at BETWEEN '2012-09-15' AND '2012-11-15'
+	GROUP BY
+		 1, 2, 3
+) AS granular_date_sessions
+
+GROUP BY 1;
+
+-- Looks like we can plan one support staff around the clock but double that to two support staff from 8AM to 5PM from Monday through Friday,
+based on a division of labor of 10 sessions per hour per staff support employee
 
