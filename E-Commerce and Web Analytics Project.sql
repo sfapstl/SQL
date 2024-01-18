@@ -1,6 +1,6 @@
-Data Analysis and Business Intelligence Project | MySQL Workbench
+/* Data Analysis and Business Intelligence Project | MySQL Workbench
 
-In this project, I will be roleplaying as a a newly hired Database Analyst for Maven Fuzzy Factory, 
+In this project, I will be roleplaying as a newly hired Database Analyst for Maven Fuzzy Factory, 
 an eCommerce start-up, and will be working directly with the CEO, Marketing Director and Website Manager 
 to help grow the business and analyze performance along the way 
 
@@ -25,11 +25,11 @@ The database has 6 tables representing data from March 2012 – May 2015
 	Website_sessions 
 
 Source:  
-https://www.udemy.com/course/advanced-sql-mysql-for-analytics-business-intelligence/?src=sac&kw=advance+sql
+https://www.udemy.com/course/advanced-sql-mysql-for-analytics-business-intelligence/?src=sac&kw=advance+sql */
 
 ------------------------------------------ SECTION ONE : ANALYZING TRAFFIC SOURCES --------------------------------------------------
 
-# Assignment 1.1 : Identifying top traffic sources in terms of website sessions, grouped by UTM source, campaign, and referring domain
+/* Assignment 1.1 : Identifying top traffic sources in terms of website sessions, grouped by UTM source, campaign, and referring domain */
 
 SELECT
           utm_source,
@@ -47,7 +47,7 @@ GROUP BY
 ORDER BY 4 DESC;
 
 
-# Assignment 1.2 : Calculate conversion rates from sessions to orders up until 2012-04-14
+/* Assignment 1.2 : Calculate conversion rates from sessions to orders up until 2012-04-14 */
 
 SELECT
           COUNT(DISTINCT website_sessions.website_session_id) AS sessions,
@@ -64,12 +64,11 @@ WHERE
 	  AND utm_source = 'gsearch'
 	  AND utm_campaign = 'nonbrand';
 
--- Based on this analysis, Marketing is overspending based on the conversion rate (less than 4%), 
-recommend Marketing Director to dial down on search bids, thereby reducing company costs
+-- Based on this analysis, Marketing is overspending based on the conversion rate (less than 4%), recommend Marketing Director to dial down on search bids, thereby reducing company costs
 
 
-# Assignment 1.3 : Based on the previous analysis, Marketing bid down on gsearch nonbrand (utm source and campaign) last 2012-04-15.
-Pull gsearch nonbrand trended session volume by week to see if these bid changes have caused volume to drop.
+/* Assignment 1.3 : Based on the previous analysis, Marketing bid down on gsearch nonbrand (utm source and campaign) last 2012-04-15.
+Pull gsearch nonbrand trended session volume by week to see if these bid changes have caused volume to drop. */
 
 SELECT
           MIN(DATE(created_at)) AS week_start_date,
@@ -85,11 +84,11 @@ GROUP BY
           WEEK(created_at);
 
 -- UTM source gsearch seems fairly sensitive to bid changes since the number of sessions have dropped.
-Moving forward, need to think of ways to make campaigns more efficient to maximize volume while saving costs
+-- Moving forward, need to think of ways to make campaigns more efficient to maximize volume while saving costs
 
 
-# Assignment 1.4 : Bid Optimization for Paid Traffic. Investigate conversion rates from sessions to orders by device type (desktop or mobile)
-to determine whether we need to bid up on either
+/* Assignment 1.4 : Bid Optimization for Paid Traffic. Investigate conversion rates from sessions to orders by device type (desktop or mobile)
+to determine whether we need to bid up on either */
 
 SELECT
 	  device_type,
@@ -113,9 +112,9 @@ GROUP BY
 -- Recommend to increase bids on desktop to rank higher in auctions and lead to sales boosts
 
 
-# Assignment 4.5 : Trending with Granular Segments. Based on the previous analysis, gsearch nonbrand campaigns
+/* Assignment 4.5 : Trending with Granular Segments. Based on the previous analysis, gsearch nonbrand campaigns
 were bid up on 2012-05-19. Pull weekly trends for both desktop and mobile to see the impact on volume. 
-Use 2012-04-15 until the bid change as the baseline.
+Use 2012-04-15 until the bid change as the baseline. */
 
 SELECT
 	  MIN(DATE(created_at)) AS week_start_date,
@@ -136,7 +135,7 @@ GROUP BY
 
 ------------------------------------------ SECTION TWO : ANALYZING WEBSITE PERFORMANCE --------------------------------------------------
 
-# Assignment 2.1 : Finding top website pages. Pull the most viewed website pages ranked by session volume
+/* Assignment 2.1 : Finding top website pages. Pull the most viewed website pages ranked by session volume */
 
 SELECT
           pageview_url,
@@ -153,7 +152,7 @@ ORDER BY
 -- The homepage, products page, and Mr. Fuzzy page receive the most traffic
 
 
-# Assignment 2.2 : Finding top entry pages. Pull all entry or landing pages and rank them on entry volume
+/* Assignment 2.2 : Finding top entry pages. Pull all entry or landing pages and rank them on entry volume */
 
 -- First, return the first pageview for each website session and transform the query result into a temporary table
 
@@ -186,8 +185,8 @@ GROUP BY
 -- It looks like all traffic comes through the /home page at this point in time
 
 
-# Assignment 2.3 : Calculating Bounce Rates. Pull the bounce rates for traffic landing on the /home page. 
-Show sessions, bounced sessions, and the bounce rate.
+/* Assignment 2.3 : Calculating Bounce Rates. Pull the bounce rates for traffic landing on the /home page. 
+Show sessions, bounced sessions, and the bounce rate. */
 
 -- First, create a temporary table grouping website sessions with their first pageviews
 CREATE TEMPORARY TABLE first_pgviews
@@ -250,13 +249,12 @@ LEFT JOIN
 -- From this analysis, there is a high bounce rate at almost 60% for paid search w/c should be high-quality traffic
 -- Note that all sessions so far have the homepage as the landing page and 60% of all sessions end here
 -- Keep an eye on bounce rates, which represent a major area of improvement 
--- Help the Website Manager measure and analyze a new page that she thinks will improve performance, 
-and analyze the results of an A/B split test against the homepage
+-- Help the Website Manager measure and analyze a new page that she thinks will improve performance, and analyze the results of an A/B split test against the homepage
 
 
-# Assignment 2.4 : Analyzing Landing Page Tests. Based on the analysis, a new custom landing page called /lander-1
+/* Assignment 2.4 : Analyzing Landing Page Tests. Based on the analysis, a new custom landing page called /lander-1
 was run in a 50/50 test against the homepage (/home) for gsearch non-brand traffic. Pull the bounce rates for the 
-two groups to evaluate the new page. Just look at the time period where /lander-1 was getting traffic.
+two groups to evaluate the new page. Just look at the time period where /lander-1 was getting traffic. */
 
 -- Finding the first instance of /lander-1 to set the analysis timeframe
 SELECT
@@ -337,9 +335,9 @@ GROUP BY 1;
 -- Keep an eye on bounce rates and help the team look for other areas to test and optimize
 
 
-# Assignment 2.5 : Landing Page Trend Analysis. Pull the volume of paid search nonbrand traffic landing on 
+/* Assignment 2.5 : Landing Page Trend Analysis. Pull the volume of paid search nonbrand traffic landing on 
 /home and /lander-1 trended weekly from 2012-06-01 and 2012-08-31, and pull overall paid search bounce
-rate trended weekly as well
+rate trended weekly as well */
 
 -- First, creating a temporary table containing the first pageview per website session for /home and /lander-1
 CREATE TEMPORARY TABLE landing_pages
@@ -412,9 +410,9 @@ GROUP BY
 	  YEARWEEK(website_pageviews.created_at);
 
 
-# Assignment 2.6 : Building Conversion Funnels. The Website Manager wants to understand where we lose gsearch visitors 
+/* Assignment 2.6 : Building Conversion Funnels. The Website Manager wants to understand where we lose gsearch visitors 
 between /lander-1 and placing an order. Build a full conversion funnel, analyzing how many customers make it to each step.
-Start with /lander-1 to the thank you page. Use data since August 5 to September 5, 2012.
+Start with /lander-1 to the thank you page. Use data since August 5 to September 5, 2012. */
 
 -- First, gather the relevant sessions and track pageviews visited using CASE WHEN and use this query as a subquery
 -- Second, create a temporary table showing the conversion funnel per website session using the subquery
@@ -477,13 +475,13 @@ SELECT
 FROM 
 	 session_level_made_it_flags;
 
--- Based on this analysis, I would recommend the Website Manager to focus on the lander, Mr. Fuzzy page, 
-and the billing page which have the lowest click rates
+/* Based on this analysis, I would recommend the Website Manager to focus on the lander, Mr. Fuzzy page, 
+and the billing page which have the lowest click rates */
 
 
-# Assignment 2.7 : Analyzing Conversion Funnel Tests. Website Manager created a new billing test page called /billing-2.  
+/* Assignment 2.7 : Analyzing Conversion Funnel Tests. Website Manager created a new billing test page called /billing-2.  
 Determine whether /billing-2 is doing better than original /billing page. What percent of sessions on those pages end up 
-placing an order for all traffic, not just search visitors?
+placing an order for all traffic, not just search visitors? */
 
 -- First, find the first instance where /billing-2 was viewed to set the analysis timeframe
 SELECT
@@ -523,9 +521,9 @@ GROUP BY 1;
 
 ------------------------------------------ SECTION THREE : ANALYSIS FOR CHANNEL PORTFOLIO MANAGEMENT --------------------------------------------------
 
-# Assignment 3.1 : Analyzing Channel Portfolios. With gsearch doing well and the site performing better, 
+/* Assignment 3.1 : Analyzing Channel Portfolios. With gsearch doing well and the site performing better, 
 a second paid search channel, "bsearch", was launched around August 22, 2012. Pull weekly trended session 
-volume since then and compare to gsearch nonbrand.
+volume since then and compare to gsearch nonbrand. */
 
 SELECT
 	 MIN(DATE(created_at)) AS week_start_date,
@@ -543,8 +541,8 @@ GROUP BY
 -- bsearch gets roughly a third of the traffic of gsearch, which is significant enough to be better acquainted with the new channel
 
 
-# Assignment 3.2 : Comparing Channel Characteristics. Pull the percentage of traffic coming on mobile 
-from bsearch and compare to gsearch, aggregate data since August 22.
+/* Assignment 3.2 : Comparing Channel Characteristics. Pull the percentage of traffic coming on mobile 
+from bsearch and compare to gsearch, aggregate data since August 22. */
 
 SELECT
 	 utm_source,
@@ -564,9 +562,9 @@ GROUP BY
 -- It looks like the two channels are quite different from a device standpoint, investigate further
 
 
-# Assignment 3.3 : Cross-Channel Bid Optimization. Pull nonbrand conversion rates from session to order 
+/* Assignment 3.3 : Cross-Channel Bid Optimization. Pull nonbrand conversion rates from session to order 
 for gsearch and bsearch, and slice the data by device type. Analyze data from August 22 to September 18, 
-a special pre-holiday campaign for gsearch started on September 19 so limit to before this date. 
+a special pre-holiday campaign for gsearch started on September 19 so limit to before this date. */
 
 SELECT
 	 device_type,
@@ -590,9 +588,9 @@ GROUP BY
 -- Recommend Marketing Director to bid down on bsearch based on its underperformance
 
 
-# Assignment 3.4 : Analyzing Channel Portfolio Trends. Based on previous analysis, Marketing bid down 
+/* Assignment 3.4 : Analyzing Channel Portfolio Trends. Based on previous analysis, Marketing bid down 
 on bsearch nonbrand on December 2nd. Pull weekly session volume for gsearch and bsearch nonbrand, 
-broken down by device, since November 4. Include a comparison metric to show bsearch as a percent of gsearch for each device.
+broken down by device, since November 4. Include a comparison metric to show bsearch as a percent of gsearch for each device. */
 
 SELECT
 	 MIN(DATE(created_at)) AS week_start_date,
@@ -615,9 +613,9 @@ GROUP BY
 -- gsearch dropped too after Black Friday and Cyber Monday but less compared to bsearch; this is alright given the low conversion rate
 
 
-# Assignment 3.5 : Analyzing Direct Traffic. A potential investor is curious whether any brand momentum 
+/* Assignment 3.5 : Analyzing Direct Traffic. A potential investor is curious whether any brand momentum 
 is being built or will the company keep relying on paid traffic. Pull organic search, direct type in, 
-and paid brand search sessions by month, and show those sessions as a percentage of paid search nonbrand.
+and paid brand search sessions by month, and show those sessions as a percentage of paid search nonbrand. */
 
 SELECT
 	 YEAR(created_at) AS yr,
@@ -644,8 +642,8 @@ GROUP BY
 
 ------------------------------------------ SECTION FOUR : ANALYZING BUSINESS PATTERNS AND SEASONALITY --------------------------------------------------
 
-# Assignment 4.1 : Analyzing Seasonality. Look at 2012 monthly and weekly volume patterns to identify 
-any seasonal trends to plan for 2013. Pull session volume and order volume.
+/* Assignment 4.1 : Analyzing Seasonality. Look at 2012 monthly and weekly volume patterns to identify 
+any seasonal trends to plan for 2013. Pull session volume and order volume. */
 
 -- Note: Two separate queries are being requested
 
@@ -684,9 +682,9 @@ GROUP BY
 -- Think about planning ahead in terms of customer support and inventory management during these periods this 2013
 
 
-# Assignment 4.2 : Analyzing Business Patterns. In considering the decision to add live chat support to 
+/* Assignment 4.2 : Analyzing Business Patterns. In considering the decision to add live chat support to 
 improve customer experience, analyze the average website session volume, by hour of fay and by day week, 
-to staff appropriately. Date range: September 15 -Nov 15, 2012 to avoid the holiday time period.
+to staff appropriately. Date range: September 15 -Nov 15, 2012 to avoid the holiday time period. */
 
 SELECT
 	 hr,
@@ -713,15 +711,15 @@ FROM (
 
 GROUP BY 1;
 
--- Looks like we can plan one support staff around the clock but double that to two support staff from 8AM to 5PM from Monday through Friday,
-based on a division of labor of 10 sessions per hour per staff support employee
+/* Looks like we can plan one support staff around the clock but double that to two support staff from 8AM to 5PM from Monday through Friday,
+based on a division of labor of 10 sessions per hour per staff support employee */
 
 
 ------------------------------------------ SECTION FIVE : PRODUCT ANALYSIS --------------------------------------------------
 
-# Assignment 5.1 : Product-level Sales Analysis. Received: 2013-01-04. CEO: About to launch a new product and would want to do 
+/* Assignment 5.1 : Product-level Sales Analysis. Received: 2013-01-04. CEO: About to launch a new product and would want to do 
 a deep dive on the current flagship product. Pull monthly trends to date for number of sales, total revenue, 
-and total margin generated for the business.
+and total margin generated for the business. */
 
 SELECT
 	 YEAR(created_at) AS year,
@@ -736,9 +734,9 @@ WHERE
 GROUP BY 1, 2;
 
 
-# Assignment 5.2 : Analyzing Product Launches. Received: 2013-04-03. CEO: Second product launched on 2013-01-06. 
+/* Assignment 5.2 : Analyzing Product Launches. Received: 2013-04-03. CEO: Second product launched on 2013-01-06. 
 Pull monthly order volume, overall conversion rates, revenue per session, and a breakdown of sales by product 
-for the time period since 2012-04-01.
+for the time period since 2012-04-01. */
 
 SELECT
 	 YEAR(website_sessions.created_at) AS year,
@@ -761,9 +759,9 @@ GROUP BY 1, 2;
 -- CEO wants to understand if growth was due to the new product launch or merely a continuation of overall business improvements
 
 
-# Assignment 5.3 : Product-level Website Pathing. Received: 2013-04-06. Website Manager: Look at sessions 
+/* Assignment 5.3 : Product-level Website Pathing. Received: 2013-04-06. Website Manager: Look at sessions 
 which hit the /products page and see where they went next. Pull clickthrough rates from /products since 
-the second product launch and compare to the 3 months leading up to launch as baseline.
+the second product launch and compare to the 3 months leading up to launch as baseline. */
 
 -- First, create a temporary table for the conversion funnels
 CREATE TEMPORARY TABLE session_level_viewed_flags
@@ -823,13 +821,13 @@ B. Post_Product_2	10710		8201		0.7657		6655		0.6214		1546		0.1444
 
 
 -- While conversion rates from /products pageviews that clicked through to Mr. Fuzzy have decreased since Love Bear launched, 
-overall clickthrough rate has gone up, indicating additional overall product interest
+-- overall clickthrough rate has gone up, indicating additional overall product interest
 -- Should probably look at conversion funnels for each product individually
 
 
-# Assignment 5.4 : Building Product-level Conversion Funnels. Received: 2013-04-10
+/* Assignment 5.4 : Building Product-level Conversion Funnels. Received: 2013-04-10
 Website Manager: Analyze the conversion funnels from each of the two products from product page to conversion since January 6. 
-Produce a comparison between the two conversion funnels for all website traffic. 
+Produce a comparison between the two conversion funnels for all website traffic. */
 
 -- Gather the relevant sessions and pageviews
 CREATE TEMPORARY TABLE sessions_w_product_seen
@@ -933,14 +931,14 @@ mrfuzzy		0.4349			0.6860		0.8205			0.6363
 
 
 -- Adding a second product increased overall CTR from the /products page and Love Bear has a better click rate 
-to the /cart page and has comparable rates with Mr Fuzzy throughout the rest of the funnel
+-- to the /cart page and has comparable rates with Mr Fuzzy throughout the rest of the funnel
 -- Second product has been good for business, might consider adding a third product
 
 
-# Assignment 5.5 : Cross-Sell Analysis. Received: 2013-11-22
+/* Assignment 5.5 : Cross-Sell Analysis. Received: 2013-11-22
 CEO: On September 25, customers were given the option to add a second product while on the /cart page. 
 Compare the month before vs. the month after the change. Show clickthrough rate from the /cart page, 
-average products per order, average order value, and overall revenue per /cart pageview.
+average products per order, average order value, and overall revenue per /cart pageview. */
 
 -- gathering the sessions on the /cart page
 CREATE TEMPORARY TABLE sessions_on_cart
@@ -990,7 +988,7 @@ INNER JOIN
 	 ON orders.website_session_id = sessions_on_cart.cart_session_id;
 -- end of temp table
 
--- ifinally, summarizing the data grouped by time period
+-- finally, summarizing the data grouped by time period
 SELECT
 	 time_period,
 	 COUNT(DISTINCT cart_session_id) AS cart_sessions,
@@ -1030,14 +1028,13 @@ A. Pre_Cross_Sell	1830		1229		0.6716		1.0000			51.4164			18.3188
 B. Post_Cross_Sell	1975		1351		0.6841		1.0447			54.2518			18.4319
 
 
--- Looks like clickthrough rate from the /cart page did not go down, and products per order, 
-average order value, and revenue per /cart session are all up since the addition of cross-selling
+-- Looks like clickthrough rate from the /cart page did not go down, and products per order, average order value, and revenue per /cart session are all up since the addition of cross-selling
 
 
-# Assignment 5.6 : Product Portfolio Expansion. Received: 2014-01-12
+/* Assignment 5.6 : Product Portfolio Expansion. Received: 2014-01-12
 CEO: On December 12, a third product was launched targeting the birthday gift market (Birthday Bear). 
 Run a pre-post analysis comparing the month before vs. the month after, in terms of 
-session-to-order conversion rate, AOV, products per order, and revenue per session
+session-to-order conversion rate, AOV, products per order, and revenue per session */
 
 SELECT
 	 CASE
@@ -1068,11 +1065,11 @@ B. Post_Birthday_Bear	0.0702		56.9313			1.1234			3.9988
 -- Looks like adding a third product has been good for the business, all metrics are up
 
 
-# Assignment 5.7 : Analyzing Product Refund Rates. Received: 2014-10-14
+/* Assignment 5.7 : Analyzing Product Refund Rates. Received: 2014-10-14
 CEO: The Mr Fuzzy supplier had some quality issues that weren't corrected until September 2013, 
 then a major problem when the bears' arms were falling off in August/September 2014. 
 A new supplier was contracted on September 16, 2014. Pull monthly product refund rates, by product, 
-and confirm whether quality issues have been fixed.
+and confirm whether quality issues have been fixed. */
 
 SELECT
 	 YEAR(order_items.created_at) AS yr,
@@ -1102,14 +1099,13 @@ WHERE
 	 order_items.created_at <= '2014-10-14'
 GROUP BY 1, 2;
 	
--- Refund rates for Mr. Fuzzy did go down after the initial improvements in September 2013 
-but became especially bad in August and September 2014 as expected (13-14%)
+-- Refund rates for Mr. Fuzzy did go down after the initial improvements in September 2013 but became especially bad in August and September 2014 as expected (13-14%)
 -- New supplier is better so far and refund rates are lower overall across all products
 
 ------------------------------------------ SECTION SIX : USER ANALYSIS --------------------------------------------------
 
-# Assignment 6.1 : Identifying Repeat Beheaviors. Received: 2014-11-01
-Marketing Director: Pull data on the number of website visitors that come back for another session, 2014 to date.
+/* Assignment 6.1 : Identifying Repeat Beheaviors. Received: 2014-11-01
+Marketing Director: Pull data on the number of website visitors that come back for another session, 2014 to date. */
 
 -- first, gather the relevant user and session ids
 CREATE TEMPORARY TABLE sessions_w_repeats
@@ -1162,9 +1158,9 @@ repeat_sessions		users
 -- Looks like a fair number of customers do come back to the website after their first session
 
 
-# Assignment 6.2 : Analyzing Time to Repeat. Received: 2014-11-03
+/* Assignment 6.2 : Analyzing Time to Repeat. Received: 2014-11-03
 Marketing Director: Pull the minimum, maximum, and average time between the first 
-and second sesson for repeat customers, from 2014 to date.
+and second sesson for repeat customers, from 2014 to date. */
 
 -- gather the relevant sessions with dates
 CREATE TEMPORARY TABLE sessions_repeats_w_dates
@@ -1230,7 +1226,7 @@ avg_days_before_repeat	min_days_before_repeat	max_days_before_repeat
 -- Might be good to investigate the channels these users are using
 
 
-# Assignment 6.3 : Analyzing Repeat Channel Behavior. Compare new vs. repeat sessions by channel, from 2014 to date.
+/* Assignment 6.3 : Analyzing Repeat Channel Behavior. Compare new vs. repeat sessions by channel, from 2014 to date. */
 
 SELECT
 	 -- utm_source,
@@ -1257,8 +1253,8 @@ ORDER BY 3 DESC;
 -- Approximately only 1/3 come from a paid channel, so company is not paying much for these visits
 
 
-# Assignment 6.4 : Analyzing New and Repeat Conversion Rates. Received: 2014-11-08
-Website Manager: Compare conversion rates and revenue per session for repeat sessions vs new sessions, from 2014 to date.
+/* Assignment 6.4 : Analyzing New and Repeat Conversion Rates. Received: 2014-11-08
+Website Manager: Compare conversion rates and revenue per session for repeat sessions vs new sessions, from 2014 to date. */
 
 SELECT
 	 website_sessions.is_repeat_session,
