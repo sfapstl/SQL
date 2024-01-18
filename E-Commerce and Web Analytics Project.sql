@@ -1,4 +1,4 @@
-/* Data Analysis and Business Intelligence Project | MySQL Workbench
+Data Analysis and Business Intelligence Project | MySQL Workbench
 
 In this project, I will be roleplaying as a a newly hired Database Analyst for Maven Fuzzy Factory, 
 an eCommerce start-up, and will be working directly with the CEO, Marketing Director and Website Manager 
@@ -29,7 +29,7 @@ https://www.udemy.com/course/advanced-sql-mysql-for-analytics-business-intellige
 
 ------------------------------------------ SECTION ONE : ANALYZING TRAFFIC SOURCES --------------------------------------------------
 
-# Assignment 1.1 : Identifying top traffic sources in terms of website sessions, grouped by UTM source, campaign, and referring domain */
+# Assignment 1.1 : Identifying top traffic sources in terms of website sessions, grouped by UTM source, campaign, and referring domain
 
 SELECT
           utm_source,
