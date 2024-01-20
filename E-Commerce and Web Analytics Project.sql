@@ -27,6 +27,397 @@ The database has 6 tables representing data from March 2012 – May 2015
 Source:  
 https://www.udemy.com/course/advanced-sql-mysql-for-analytics-business-intelligence/?src=sac&kw=advance+sql */
 
+
+-- I have moved Section 5 here at the beginning to showcase the most recent skills learned. Normal order of sections continues after Section 5.
+
+------------------------------------------ SECTION FIVE : PRODUCT ANALYSIS --------------------------------------------------
+
+/* Assignment 5.1 : Product-level Sales Analysis. Received: 2013-01-04. CEO: About to launch a new product and would want to do 
+a deep dive on the current flagship product. Pull monthly trends to date for number of sales, total revenue, 
+and total margin generated for the business. */
+
+SELECT
+	 YEAR(created_at) AS year,
+	 MONTH(created_at) AS month,
+	 COUNT(DISTINCT order_id) AS number_of_sales,
+	 SUM(price_usd) AS total_revenue,
+	 SUM(price_usd - cogs_usd) AS total_margin
+FROM 
+	 orders
+WHERE 
+	 created_at < '2013-01-04'
+GROUP BY 1, 2;
+
+
+/* Assignment 5.2 : Analyzing Product Launches. Received: 2013-04-03. CEO: Second product launched on 2013-01-06. 
+Pull monthly order volume, overall conversion rates, revenue per session, and a breakdown of sales by product 
+for the time period since 2012-04-01. */
+
+SELECT
+	 YEAR(website_sessions.created_at) AS year,
+	 MONTH(website_sessions.created_at) AS month,
+	 COUNT(DISTINCT orders.order_id) AS orders,
+	 COUNT(DISTINCT orders.order_id) / COUNT(DISTINCT website_sessions.website_session_id) AS conv_rate,
+	 SUM(orders.price_usd) / COUNT(DISTINCT website_sessions.website_session_id) AS revenue_per_session,
+	 COUNT(DISTINCT CASE WHEN orders.primary_product_id = 1 THEN orders.order_id ELSE NULL END) AS product_one_orders,
+	 COUNT(DISTINCT CASE WHEN orders.primary_product_id = 2 THEN orders.order_id ELSE NULL END) AS product_two_orders
+FROM 
+	 website_sessions
+LEFT JOIN 
+	 orders
+	 ON orders.website_session_id = website_sessions.website_session_id
+WHERE 
+	 website_sessions.created_at BETWEEN '2012-04-01' AND '2013-04-03'
+GROUP BY 1, 2;
+
+-- Conversion rates and revenue per session are improving over time
+-- CEO wants to understand if growth was due to the new product launch or merely a continuation of overall business improvements
+
+
+/* Assignment 5.3 : Product-level Website Pathing. Received: 2013-04-06. Website Manager: Look at sessions 
+which hit the /products page and see where they went next. Pull clickthrough rates from /products since 
+the second product launch and compare to the 3 months leading up to launch as baseline. */
+
+-- First, create a temporary table for the conversion funnels
+CREATE TEMPORARY TABLE session_level_viewed_flags
+SELECT
+	 website_session_id,
+	 MAX(products) AS products_viewed,
+	 MAX(mrfuzzy) AS mrfuzzy_viewed,
+	 MAX(lovebear) AS lovebear_viewed
+FROM (
+	SELECT
+		 created_at,
+		 website_session_id,
+		 pageview_url,
+		 CASE WHEN pageview_url = '/products' THEN 1 ELSE 0 END AS products,
+		 CASE WHEN pageview_url = '/the-original-mr-fuzzy' THEN 1 ELSE 0 END AS mrfuzzy,
+		 CASE WHEN pageview_url = '/the-forever-love-bear' THEN 1 ELSE 0 END AS lovebear
+	FROM 
+		 website_pageviews
+	WHERE 
+		 created_at BETWEEN '2012-10-06' AND '2013-04-06'
+) AS pageview_level
+GROUP BY 1;
+-- end of temp table
+
+-- Second, summarize the pathing grouped by time period
+SELECT
+	 CASE
+	 	WHEN website_pageviews.created_at < '2013-01-06' THEN 'A. Pre_Product_2'
+	 	WHEN website_pageviews.created_at >= '2013-01-06' THEN 'B. Post_Product_2'
+	 END AS time_period,
+	 
+	 COUNT(DISTINCT CASE WHEN products_viewed = 1 THEN session_level_viewed_flags.website_session_id ELSE NULL END) AS sessions,
+	 COUNT(DISTINCT CASE WHEN mrfuzzy_viewed + lovebear_viewed > 0 THEN session_level_viewed_flags.website_session_id ELSE NULL END) AS w_next_pg,
+
+	 COUNT(DISTINCT CASE WHEN mrfuzzy_viewed + lovebear_viewed > 0 THEN session_level_viewed_flags.website_session_id ELSE NULL END) /
+		COUNT(DISTINCT CASE WHEN products_viewed = 1 THEN session_level_viewed_flags.website_session_id ELSE NULL END) AS pct_w_next_pg,
+
+	 COUNT(DISTINCT CASE WHEN products_viewed = 1 AND mrfuzzy_viewed = 1 THEN session_level_viewed_flags.website_session_id ELSE NULL END) AS to_mrfuzzy,
+	 COUNT(DISTINCT CASE WHEN products_viewed = 1 AND mrfuzzy_viewed = 1 THEN session_level_viewed_flags.website_session_id ELSE NULL END) /
+		COUNT(DISTINCT CASE WHEN products_viewed = 1 THEN session_level_viewed_flags.website_session_id ELSE NULL END) AS pct_to_mrfuzzy,
+
+	 COUNT(DISTINCT CASE WHEN products_viewed = 1 AND lovebear_viewed = 1 THEN session_level_viewed_flags.website_session_id ELSE NULL END) AS to_lovebear,
+	 COUNT(DISTINCT CASE WHEN products_viewed = 1 AND lovebear_viewed = 1 THEN session_level_viewed_flags.website_session_id ELSE NULL END) /
+		COUNT(DISTINCT CASE WHEN products_viewed = 1 THEN session_level_viewed_flags.website_session_id ELSE NULL END) AS pct_to_lovebear
+FROM 
+	 session_level_viewed_flags
+LEFT JOIN 
+	 website_pageviews
+	 ON session_level_viewed_flags.website_session_id = website_pageviews.website_session_id
+GROUP BY 1;
+
+RESULT:
+
+time_period		sessions	w_next_pg	pct_w_next_pg	to_mrfuzzy	pct_to_mrfuzzy	to_lovebear	pct_to_lovebear
+A. Pre_Product_2	15696		11347		0.7229		11347		0.7229		0		0.0000
+B. Post_Product_2	10710		8201		0.7657		6655		0.6214		1546		0.1444
+
+
+-- While conversion rates from /products pageviews that clicked through to Mr. Fuzzy have decreased since Love Bear launched, 
+-- overall clickthrough rate has gone up, indicating additional overall product interest
+-- Should probably look at conversion funnels for each product individually
+
+
+/* Assignment 5.4 : Building Product-level Conversion Funnels. Received: 2013-04-10
+Website Manager: Analyze the conversion funnels from each of the two products from product page to conversion since January 6. 
+Produce a comparison between the two conversion funnels for all website traffic. */
+
+-- Gather the relevant sessions and pageviews
+CREATE TEMPORARY TABLE sessions_w_product_seen
+SELECT
+	 website_session_id,
+	 website_pageview_id,
+	 pageview_url AS product_seen
+FROM 
+	 website_pageviews
+WHERE 
+	 created_at BETWEEN '2013-01-06' AND '2013-04-10' -- date of product launch and request
+	 AND pageview_url IN ('/the-original-mr-fuzzy', '/the-forever-love-bear') -- sessions on the two product pages;
+-- end of temp table
+
+-- finding the right pageview_urls to build the conversion funnels
+SELECT DISTINCT
+	 website_pageviews.pageview_url
+FROM 
+	 sessions_w_product_seen
+LEFT JOIN 
+	 website_pageviews
+	 ON website_pageviews.website_session_id = sessions_w_product_seen.website_session_id -- limiting to sessions on product pages
+	 AND website_pageviews.website_pageview_id > sessions_w_product_seen.website_pageview_id; -- show urls after the product pages
+-- pageview_urls viewed after both products: /cart, /shipping, /billing-2, /thank-you-for-your-order
+
+-- building the conversion funnels
+CREATE TEMPORARY TABLE session_product_conversion_funnel
+SELECT
+	 website_session_id,
+	 CASE
+		 WHEN product_seen = '/the-original-mr-fuzzy' THEN 'mrfuzzy'
+		 WHEN product_seen = '/the-forever-love-bear' THEN 'lovebear'
+		 ELSE 'check logic'
+	 END AS product_seen,
+	 MAX(cart) AS cart,
+	 MAX(shipping) AS shipping,
+	 MAX(billing) AS billing,
+	 MAX(thankyou) AS thankyou
+FROM (
+SELECT
+	 sessions_w_product_seen.website_session_id,
+	 sessions_w_product_seen.product_seen,
+	 CASE WHEN website_pageviews.pageview_url = '/cart' THEN 1 ELSE 0 END AS cart,
+	 CASE WHEN website_pageviews.pageview_url = '/shipping' THEN 1 ELSE 0 END AS shipping,
+	 CASE WHEN website_pageviews.pageview_url = '/billing-2' THEN 1 ELSE 0 END AS billing,
+	 CASE WHEN website_pageviews.pageview_url = '/thank-you-for-your-order' THEN 1 ELSE 0 END AS thankyou
+FROM 
+	 sessions_w_product_seen
+LEFT JOIN 
+	 website_pageviews
+	 ON website_pageviews.website_session_id = sessions_w_product_seen.website_session_id -- limiting to sessions on product pages
+	 AND website_pageviews.website_pageview_id > sessions_w_product_seen.website_pageview_id -- show urls after the product pages
+) AS tableAlias
+
+GROUP BY 1, 2;
+-- end of temp table
+
+-- Summarizing the conversion funnel for both products
+SELECT
+	 product_seen,
+	 COUNT(website_session_id) AS sessions,
+	 COUNT(DISTINCT CASE WHEN cart = 1 THEN website_session_id ELSE NULL END) AS to_cart,
+	 COUNT(DISTINCT CASE WHEN shipping = 1 THEN website_session_id ELSE NULL END) AS to_shipping,
+	 COUNT(DISTINCT CASE WHEN billing = 1 THEN website_session_id ELSE NULL END) AS to_billing,
+	 COUNT(DISTINCT CASE WHEN thankyou = 1 THEN website_session_id ELSE NULL END) AS to_thankyou
+FROM 
+	 session_product_conversion_funnel
+GROUP BY 1;
+
+RESULT:
+
+product_seen	sessions	to_cart		to_shipping	to_billing	to_thankyou
+lovebear	1599		877		603		488		301
+mrfuzzy		6985		3038		2084		1710		1088
+
+
+-- Calculating click through rates
+SELECT
+	 product_seen,
+
+	 COUNT(DISTINCT CASE WHEN cart = 1 THEN website_session_id ELSE NULL END) /
+		COUNT(website_session_id) AS product_click_rt,
+
+	 COUNT(DISTINCT CASE WHEN shipping = 1 THEN website_session_id ELSE NULL END) /
+		COUNT(DISTINCT CASE WHEN cart = 1 THEN website_session_id ELSE NULL END) AS cart_click_rt,
+
+	 COUNT(DISTINCT CASE WHEN billing = 1 THEN website_session_id ELSE NULL END) /
+		COUNT(DISTINCT CASE WHEN shipping = 1 THEN website_session_id ELSE NULL END) AS shipping_click_rt,
+
+	 COUNT(DISTINCT CASE WHEN thankyou = 1 THEN website_session_id ELSE NULL END) /
+		COUNT(DISTINCT CASE WHEN billing = 1 THEN website_session_id ELSE NULL END) AS billing_click_rt
+FROM 
+	 session_product_conversion_funnel
+GROUP BY 1;
+
+RESULT:
+
+product_seen	product_click_rt	cart_click_rt	shipping_click_rt	billing_click_rt
+lovebear	0.5485			0.6876		0.8093			0.6168
+mrfuzzy		0.4349			0.6860		0.8205			0.6363
+
+
+-- Adding a second product increased overall CTR from the /products page and Love Bear has a better click rate 
+-- to the /cart page and has comparable rates with Mr Fuzzy throughout the rest of the funnel
+-- Second product has been good for business, might consider adding a third product
+
+
+/* Assignment 5.5 : Cross-Sell Analysis. Received: 2013-11-22
+CEO: On September 25, customers were given the option to add a second product while on the /cart page. 
+Compare the month before vs. the month after the change. Show clickthrough rate from the /cart page, 
+average products per order, average order value, and overall revenue per /cart pageview. */
+
+-- gathering the sessions on the /cart page
+CREATE TEMPORARY TABLE sessions_on_cart
+SELECT
+	 website_session_id AS cart_session_id,
+	 website_pageview_id AS cart_pv,
+	 CASE
+		 WHEN created_at < '2013-09-25' THEN 'A. Pre_Cross_Sell'
+		 WHEN created_at >= '2013-09-25' THEN 'B. Post_Cross_Sell'
+	 END AS time_period
+FROM 
+	 website_pageviews
+WHERE 
+	 created_at BETWEEN '2013-08-25' AND '2013-10-25'
+	 AND pageview_url = '/cart';
+-- end of temp table
+
+-- gathering sessions viewing pages after /cart
+CREATE TEMPORARY TABLE sessions_after_cart
+SELECT
+	 sessions_on_cart.cart_session_id AS after_cart_id,
+	 sessions_on_cart.time_period,
+	 MIN(website_pageviews.website_pageview_id) AS pv_id_after_cart
+FROM 
+	 sessions_on_cart
+LEFT JOIN 
+	 website_pageviews
+	 ON website_pageviews.website_session_id = sessions_on_cart.cart_session_id
+	 AND website_pageviews.website_pageview_id > sessions_on_cart.cart_pv -- grabbing pvs after seeing /cart
+GROUP BY 1, 2
+HAVING 
+	 MIN(website_pageviews.website_pageview_id) IS NOT NULL; -- eliminate bounce sessions after /cart
+-- end of temp table
+
+-- gathering the sessions on /cart that converted to orders
+CREATE TEMPORARY TABLE cart_sessions_w_orders
+SELECT
+	 time_period,
+	 cart_session_id AS cart_order_id,
+	 order_id,
+	 items_purchased,
+	 price_usd
+FROM 
+	 sessions_on_cart
+INNER JOIN 
+	 orders
+	 ON orders.website_session_id = sessions_on_cart.cart_session_id;
+-- end of temp table
+
+-- finally, summarizing the data grouped by time period
+SELECT
+	 time_period,
+	 COUNT(DISTINCT cart_session_id) AS cart_sessions,
+	 SUM(clicked_after_cart) AS clickthroughs,
+	 SUM(clicked_after_cart) / COUNT(DISTINCT cart_session_id) AS cart_ctr,
+	 -- SUM(ordered) AS orders_placed,
+	 -- SUM(items_purchased) AS products_purchased,
+	 SUM(items_purchased) / SUM(ordered) AS products_per_order,
+	 ROUND((SUM(price_usd) / SUM(ordered)), 4) AS avg_order_value,
+	 ROUND((SUM(price_usd) / COUNT(DISTINCT cart_session_id)), 4) AS rev_per_cart_session
+FROM (
+SELECT
+	 sessions_on_cart.time_period,
+	 sessions_on_cart.cart_session_id,
+	 -- sessions_after_cart.after_cart_id,
+	 CASE WHEN sessions_after_cart.after_cart_id IS NOT NULL THEN 1 ELSE 0 END AS clicked_after_cart,
+	 -- cart_sessions_w_orders.cart_order_id,
+	 CASE WHEN cart_sessions_w_orders.cart_order_id IS NOT NULL THEN 1 ELSE 0 END AS ordered,
+	 cart_sessions_w_orders.items_purchased,
+	 cart_sessions_w_orders.price_usd
+FROM 
+	 sessions_on_cart
+LEFT JOIN 
+	 sessions_after_cart
+	 ON sessions_after_cart.after_cart_id = sessions_on_cart.cart_session_id
+LEFT JOIN 
+	 cart_sessions_w_orders
+	 ON cart_sessions_w_orders.cart_order_id = sessions_on_cart.cart_session_id
+) AS tableAlias
+
+GROUP BY 1;
+
+RESULT:
+
+time_period		cart_sessions	clickthroughs	cart_ctr	products_per_order	avg_order_value		rev_per_cart_session
+A. Pre_Cross_Sell	1830		1229		0.6716		1.0000			51.4164			18.3188
+B. Post_Cross_Sell	1975		1351		0.6841		1.0447			54.2518			18.4319
+
+
+-- Looks like clickthrough rate from the /cart page did not go down, and products per order, average order value, and revenue per /cart session are all up since the addition of cross-selling
+
+
+/* Assignment 5.6 : Product Portfolio Expansion. Received: 2014-01-12
+CEO: On December 12, a third product was launched targeting the birthday gift market (Birthday Bear). 
+Run a pre-post analysis comparing the month before vs. the month after, in terms of 
+session-to-order conversion rate, AOV, products per order, and revenue per session */
+
+SELECT
+	 CASE
+	 	WHEN website_sessions.created_at < '2013-12-12' THEN 'A. Pre_Birthday_Bear'
+	 	WHEN website_sessions.created_at >= '2013-12-12' THEN 'B. Post_Birthday_Bear'
+	 END AS time_period,
+	 -- COUNT(DISTINCT website_session_id) AS sessions,
+	 -- COUNT(DISTINCT order_id) AS orders,
+	 COUNT(DISTINCT order_id) / COUNT(DISTINCT website_sessions.website_session_id) AS conv_rate,
+	 ROUND((SUM(price_usd) / COUNT(DISTINCT order_id)), 4) AS avg_order_value,
+	 SUM(items_purchased) / COUNT(DISTINCT order_id) AS products_per_order,
+	 ROUND((SUM(price_usd) / COUNT(DISTINCT website_sessions.website_session_id)), 4) AS rev_per_session
+FROM 
+	 website_sessions
+LEFT JOIN 
+	 orders
+	 ON orders.website_session_id = website_sessions.website_session_id
+WHERE 
+	 website_sessions.created_at BETWEEN '2013-11-12' AND '2014-01-12'
+GROUP BY 1;
+
+RESULT:
+
+time_period		conv_rate	avg_order_value		products_per_order	rev_per_session
+A. Pre_Birthday_Bear	0.0608		54.2265			1.0464			3.2987
+B. Post_Birthday_Bear	0.0702		56.9313			1.1234			3.9988
+
+-- Looks like adding a third product has been good for the business, all metrics are up
+
+
+/* Assignment 5.7 : Analyzing Product Refund Rates. Received: 2014-10-14
+CEO: The Mr Fuzzy supplier had some quality issues that weren't corrected until September 2013, 
+then a major problem when the bears' arms were falling off in August/September 2014. 
+A new supplier was contracted on September 16, 2014. Pull monthly product refund rates, by product, 
+and confirm whether quality issues have been fixed. */
+
+SELECT
+	 YEAR(order_items.created_at) AS yr,
+	 MONTH(order_items.created_at) AS mo,
+
+	 COUNT(DISTINCT CASE WHEN product_id = 1 THEN order_items.order_item_id ELSE NULL END) AS p1_orders,
+	 COUNT(DISTINCT CASE WHEN order_items.product_id = 1 THEN order_item_refund_id ELSE NULL END) /
+		COUNT(DISTINCT CASE WHEN product_id = 1 THEN order_items.order_item_id ELSE NULL END) AS p1_refund_rt,
+        
+	 COUNT(DISTINCT CASE WHEN product_id = 2 THEN order_items.order_item_id ELSE NULL END) AS p2_orders,    
+	 COUNT(DISTINCT CASE WHEN order_items.product_id = 2 THEN order_item_refund_id ELSE NULL END) /
+		COUNT(DISTINCT CASE WHEN product_id = 2 THEN order_items.order_item_id ELSE NULL END) AS p2_refund_rt,
+        
+	 COUNT(DISTINCT CASE WHEN product_id = 3 THEN order_items.order_item_id ELSE NULL END) AS p3_orders,
+	 COUNT(DISTINCT CASE WHEN order_items.product_id = 3 THEN order_item_refund_id ELSE NULL END) /
+		COUNT(DISTINCT CASE WHEN product_id = 3 THEN order_items.order_item_id ELSE NULL END) AS p3_refund_rt,
+        
+	 COUNT(DISTINCT CASE WHEN product_id = 4 THEN order_items.order_item_id ELSE NULL END) AS p4_orders,
+	 COUNT(DISTINCT CASE WHEN order_items.product_id = 4 THEN order_item_refund_id ELSE NULL END) /
+		COUNT(DISTINCT CASE WHEN product_id = 4 THEN order_items.order_item_id ELSE NULL END) AS p4_refund_rt
+FROM 
+	 order_items
+LEFT JOIN 
+	 order_item_refunds
+	 ON order_item_refunds.order_item_id = order_items.order_item_id
+WHERE 
+	 order_items.created_at <= '2014-10-14'
+GROUP BY 1, 2;
+	
+-- Refund rates for Mr. Fuzzy did go down after the initial improvements in September 2013 but became especially bad in August and September 2014 as expected (13-14%)
+-- New supplier is better so far and refund rates are lower overall across all products
+
+
 ------------------------------------------ SECTION ONE : ANALYZING TRAFFIC SOURCES --------------------------------------------------
 
 /* Assignment 1.1 : Identifying top traffic sources in terms of website sessions, grouped by UTM source, campaign, and referring domain */
@@ -714,393 +1105,6 @@ GROUP BY 1;
 /* Looks like we can plan one support staff around the clock but double that to two support staff from 8AM to 5PM from Monday through Friday,
 based on a division of labor of 10 sessions per hour per staff support employee */
 
-
------------------------------------------- SECTION FIVE : PRODUCT ANALYSIS --------------------------------------------------
-
-/* Assignment 5.1 : Product-level Sales Analysis. Received: 2013-01-04. CEO: About to launch a new product and would want to do 
-a deep dive on the current flagship product. Pull monthly trends to date for number of sales, total revenue, 
-and total margin generated for the business. */
-
-SELECT
-	 YEAR(created_at) AS year,
-	 MONTH(created_at) AS month,
-	 COUNT(DISTINCT order_id) AS number_of_sales,
-	 SUM(price_usd) AS total_revenue,
-	 SUM(price_usd - cogs_usd) AS total_margin
-FROM 
-	 orders
-WHERE 
-	 created_at < '2013-01-04'
-GROUP BY 1, 2;
-
-
-/* Assignment 5.2 : Analyzing Product Launches. Received: 2013-04-03. CEO: Second product launched on 2013-01-06. 
-Pull monthly order volume, overall conversion rates, revenue per session, and a breakdown of sales by product 
-for the time period since 2012-04-01. */
-
-SELECT
-	 YEAR(website_sessions.created_at) AS year,
-	 MONTH(website_sessions.created_at) AS month,
-	 COUNT(DISTINCT orders.order_id) AS orders,
-	 COUNT(DISTINCT orders.order_id) / COUNT(DISTINCT website_sessions.website_session_id) AS conv_rate,
-	 SUM(orders.price_usd) / COUNT(DISTINCT website_sessions.website_session_id) AS revenue_per_session,
-	 COUNT(DISTINCT CASE WHEN orders.primary_product_id = 1 THEN orders.order_id ELSE NULL END) AS product_one_orders,
-	 COUNT(DISTINCT CASE WHEN orders.primary_product_id = 2 THEN orders.order_id ELSE NULL END) AS product_two_orders
-FROM 
-	 website_sessions
-LEFT JOIN 
-	 orders
-	 ON orders.website_session_id = website_sessions.website_session_id
-WHERE 
-	 website_sessions.created_at BETWEEN '2012-04-01' AND '2013-04-03'
-GROUP BY 1, 2;
-
--- Conversion rates and revenue per session are improving over time
--- CEO wants to understand if growth was due to the new product launch or merely a continuation of overall business improvements
-
-
-/* Assignment 5.3 : Product-level Website Pathing. Received: 2013-04-06. Website Manager: Look at sessions 
-which hit the /products page and see where they went next. Pull clickthrough rates from /products since 
-the second product launch and compare to the 3 months leading up to launch as baseline. */
-
--- First, create a temporary table for the conversion funnels
-CREATE TEMPORARY TABLE session_level_viewed_flags
-SELECT
-	 website_session_id,
-	 MAX(products) AS products_viewed,
-	 MAX(mrfuzzy) AS mrfuzzy_viewed,
-	 MAX(lovebear) AS lovebear_viewed
-FROM (
-	SELECT
-		 created_at,
-		 website_session_id,
-		 pageview_url,
-		 CASE WHEN pageview_url = '/products' THEN 1 ELSE 0 END AS products,
-		 CASE WHEN pageview_url = '/the-original-mr-fuzzy' THEN 1 ELSE 0 END AS mrfuzzy,
-		 CASE WHEN pageview_url = '/the-forever-love-bear' THEN 1 ELSE 0 END AS lovebear
-	FROM 
-		 website_pageviews
-	WHERE 
-		 created_at BETWEEN '2012-10-06' AND '2013-04-06'
-) AS pageview_level
-GROUP BY 1;
--- end of temp table
-
--- Second, summarize the pathing grouped by time period
-SELECT
-	 CASE
-	 	WHEN website_pageviews.created_at < '2013-01-06' THEN 'A. Pre_Product_2'
-	 	WHEN website_pageviews.created_at >= '2013-01-06' THEN 'B. Post_Product_2'
-	 END AS time_period,
-	 
-	 COUNT(DISTINCT CASE WHEN products_viewed = 1 THEN session_level_viewed_flags.website_session_id ELSE NULL END) AS sessions,
-	 COUNT(DISTINCT CASE WHEN mrfuzzy_viewed + lovebear_viewed > 0 THEN session_level_viewed_flags.website_session_id ELSE NULL END) AS w_next_pg,
-
-	 COUNT(DISTINCT CASE WHEN mrfuzzy_viewed + lovebear_viewed > 0 THEN session_level_viewed_flags.website_session_id ELSE NULL END) /
-		COUNT(DISTINCT CASE WHEN products_viewed = 1 THEN session_level_viewed_flags.website_session_id ELSE NULL END) AS pct_w_next_pg,
-
-	 COUNT(DISTINCT CASE WHEN products_viewed = 1 AND mrfuzzy_viewed = 1 THEN session_level_viewed_flags.website_session_id ELSE NULL END) AS to_mrfuzzy,
-	 COUNT(DISTINCT CASE WHEN products_viewed = 1 AND mrfuzzy_viewed = 1 THEN session_level_viewed_flags.website_session_id ELSE NULL END) /
-		COUNT(DISTINCT CASE WHEN products_viewed = 1 THEN session_level_viewed_flags.website_session_id ELSE NULL END) AS pct_to_mrfuzzy,
-
-	 COUNT(DISTINCT CASE WHEN products_viewed = 1 AND lovebear_viewed = 1 THEN session_level_viewed_flags.website_session_id ELSE NULL END) AS to_lovebear,
-	 COUNT(DISTINCT CASE WHEN products_viewed = 1 AND lovebear_viewed = 1 THEN session_level_viewed_flags.website_session_id ELSE NULL END) /
-		COUNT(DISTINCT CASE WHEN products_viewed = 1 THEN session_level_viewed_flags.website_session_id ELSE NULL END) AS pct_to_lovebear
-FROM 
-	 session_level_viewed_flags
-LEFT JOIN 
-	 website_pageviews
-	 ON session_level_viewed_flags.website_session_id = website_pageviews.website_session_id
-GROUP BY 1;
-
-RESULT:
-
-time_period		sessions	w_next_pg	pct_w_next_pg	to_mrfuzzy	pct_to_mrfuzzy	to_lovebear	pct_to_lovebear
-A. Pre_Product_2	15696		11347		0.7229		11347		0.7229		0		0.0000
-B. Post_Product_2	10710		8201		0.7657		6655		0.6214		1546		0.1444
-
-
--- While conversion rates from /products pageviews that clicked through to Mr. Fuzzy have decreased since Love Bear launched, 
--- overall clickthrough rate has gone up, indicating additional overall product interest
--- Should probably look at conversion funnels for each product individually
-
-
-/* Assignment 5.4 : Building Product-level Conversion Funnels. Received: 2013-04-10
-Website Manager: Analyze the conversion funnels from each of the two products from product page to conversion since January 6. 
-Produce a comparison between the two conversion funnels for all website traffic. */
-
--- Gather the relevant sessions and pageviews
-CREATE TEMPORARY TABLE sessions_w_product_seen
-SELECT
-	 website_session_id,
-	 website_pageview_id,
-	 pageview_url AS product_seen
-FROM 
-	 website_pageviews
-WHERE 
-	 created_at BETWEEN '2013-01-06' AND '2013-04-10' -- date of product launch and request
-	 AND pageview_url IN ('/the-original-mr-fuzzy', '/the-forever-love-bear') -- sessions on the two product pages;
--- end of temp table
-
--- finding the right pageview_urls to build the conversion funnels
-SELECT DISTINCT
-	 website_pageviews.pageview_url
-FROM 
-	 sessions_w_product_seen
-LEFT JOIN 
-	 website_pageviews
-	 ON website_pageviews.website_session_id = sessions_w_product_seen.website_session_id -- limiting to sessions on product pages
-	 AND website_pageviews.website_pageview_id > sessions_w_product_seen.website_pageview_id; -- show urls after the product pages
--- pageview_urls viewed after both products: /cart, /shipping, /billing-2, /thank-you-for-your-order
-
--- building the conversion funnels
-CREATE TEMPORARY TABLE session_product_conversion_funnel
-SELECT
-	 website_session_id,
-	 CASE
-		 WHEN product_seen = '/the-original-mr-fuzzy' THEN 'mrfuzzy'
-		 WHEN product_seen = '/the-forever-love-bear' THEN 'lovebear'
-		 ELSE 'check logic'
-	 END AS product_seen,
-	 MAX(cart) AS cart,
-	 MAX(shipping) AS shipping,
-	 MAX(billing) AS billing,
-	 MAX(thankyou) AS thankyou
-FROM (
-SELECT
-	 sessions_w_product_seen.website_session_id,
-	 sessions_w_product_seen.product_seen,
-	 CASE WHEN website_pageviews.pageview_url = '/cart' THEN 1 ELSE 0 END AS cart,
-	 CASE WHEN website_pageviews.pageview_url = '/shipping' THEN 1 ELSE 0 END AS shipping,
-	 CASE WHEN website_pageviews.pageview_url = '/billing-2' THEN 1 ELSE 0 END AS billing,
-	 CASE WHEN website_pageviews.pageview_url = '/thank-you-for-your-order' THEN 1 ELSE 0 END AS thankyou
-FROM 
-	 sessions_w_product_seen
-LEFT JOIN 
-	 website_pageviews
-	 ON website_pageviews.website_session_id = sessions_w_product_seen.website_session_id -- limiting to sessions on product pages
-	 AND website_pageviews.website_pageview_id > sessions_w_product_seen.website_pageview_id -- show urls after the product pages
-) AS tableAlias
-
-GROUP BY 1, 2;
--- end of temp table
-
--- Summarizing the conversion funnel for both products
-SELECT
-	 product_seen,
-	 COUNT(website_session_id) AS sessions,
-	 COUNT(DISTINCT CASE WHEN cart = 1 THEN website_session_id ELSE NULL END) AS to_cart,
-	 COUNT(DISTINCT CASE WHEN shipping = 1 THEN website_session_id ELSE NULL END) AS to_shipping,
-	 COUNT(DISTINCT CASE WHEN billing = 1 THEN website_session_id ELSE NULL END) AS to_billing,
-	 COUNT(DISTINCT CASE WHEN thankyou = 1 THEN website_session_id ELSE NULL END) AS to_thankyou
-FROM 
-	 session_product_conversion_funnel
-GROUP BY 1;
-
-RESULT:
-
-product_seen	sessions	to_cart		to_shipping	to_billing	to_thankyou
-lovebear	1599		877		603		488		301
-mrfuzzy		6985		3038		2084		1710		1088
-
-
--- Calculating click through rates
-SELECT
-	 product_seen,
-
-	 COUNT(DISTINCT CASE WHEN cart = 1 THEN website_session_id ELSE NULL END) /
-		COUNT(website_session_id) AS product_click_rt,
-
-	 COUNT(DISTINCT CASE WHEN shipping = 1 THEN website_session_id ELSE NULL END) /
-		COUNT(DISTINCT CASE WHEN cart = 1 THEN website_session_id ELSE NULL END) AS cart_click_rt,
-
-	 COUNT(DISTINCT CASE WHEN billing = 1 THEN website_session_id ELSE NULL END) /
-		COUNT(DISTINCT CASE WHEN shipping = 1 THEN website_session_id ELSE NULL END) AS shipping_click_rt,
-
-	 COUNT(DISTINCT CASE WHEN thankyou = 1 THEN website_session_id ELSE NULL END) /
-		COUNT(DISTINCT CASE WHEN billing = 1 THEN website_session_id ELSE NULL END) AS billing_click_rt
-FROM 
-	 session_product_conversion_funnel
-GROUP BY 1;
-
-RESULT:
-
-product_seen	product_click_rt	cart_click_rt	shipping_click_rt	billing_click_rt
-lovebear	0.5485			0.6876		0.8093			0.6168
-mrfuzzy		0.4349			0.6860		0.8205			0.6363
-
-
--- Adding a second product increased overall CTR from the /products page and Love Bear has a better click rate 
--- to the /cart page and has comparable rates with Mr Fuzzy throughout the rest of the funnel
--- Second product has been good for business, might consider adding a third product
-
-
-/* Assignment 5.5 : Cross-Sell Analysis. Received: 2013-11-22
-CEO: On September 25, customers were given the option to add a second product while on the /cart page. 
-Compare the month before vs. the month after the change. Show clickthrough rate from the /cart page, 
-average products per order, average order value, and overall revenue per /cart pageview. */
-
--- gathering the sessions on the /cart page
-CREATE TEMPORARY TABLE sessions_on_cart
-SELECT
-	 website_session_id AS cart_session_id,
-	 website_pageview_id AS cart_pv,
-	 CASE
-		 WHEN created_at < '2013-09-25' THEN 'A. Pre_Cross_Sell'
-		 WHEN created_at >= '2013-09-25' THEN 'B. Post_Cross_Sell'
-	 END AS time_period
-FROM 
-	 website_pageviews
-WHERE 
-	 created_at BETWEEN '2013-08-25' AND '2013-10-25'
-	 AND pageview_url = '/cart';
--- end of temp table
-
--- gathering sessions viewing pages after /cart
-CREATE TEMPORARY TABLE sessions_after_cart
-SELECT
-	 sessions_on_cart.cart_session_id AS after_cart_id,
-	 sessions_on_cart.time_period,
-	 MIN(website_pageviews.website_pageview_id) AS pv_id_after_cart
-FROM 
-	 sessions_on_cart
-LEFT JOIN 
-	 website_pageviews
-	 ON website_pageviews.website_session_id = sessions_on_cart.cart_session_id
-	 AND website_pageviews.website_pageview_id > sessions_on_cart.cart_pv -- grabbing pvs after seeing /cart
-GROUP BY 1, 2
-HAVING 
-	 MIN(website_pageviews.website_pageview_id) IS NOT NULL; -- eliminate bounce sessions after /cart
--- end of temp table
-
--- gathering the sessions on /cart that converted to orders
-CREATE TEMPORARY TABLE cart_sessions_w_orders
-SELECT
-	 time_period,
-	 cart_session_id AS cart_order_id,
-	 order_id,
-	 items_purchased,
-	 price_usd
-FROM 
-	 sessions_on_cart
-INNER JOIN 
-	 orders
-	 ON orders.website_session_id = sessions_on_cart.cart_session_id;
--- end of temp table
-
--- finally, summarizing the data grouped by time period
-SELECT
-	 time_period,
-	 COUNT(DISTINCT cart_session_id) AS cart_sessions,
-	 SUM(clicked_after_cart) AS clickthroughs,
-	 SUM(clicked_after_cart) / COUNT(DISTINCT cart_session_id) AS cart_ctr,
-	 -- SUM(ordered) AS orders_placed,
-	 -- SUM(items_purchased) AS products_purchased,
-	 SUM(items_purchased) / SUM(ordered) AS products_per_order,
-	 ROUND((SUM(price_usd) / SUM(ordered)), 4) AS avg_order_value,
-	 ROUND((SUM(price_usd) / COUNT(DISTINCT cart_session_id)), 4) AS rev_per_cart_session
-FROM (
-SELECT
-	 sessions_on_cart.time_period,
-	 sessions_on_cart.cart_session_id,
-	 -- sessions_after_cart.after_cart_id,
-	 CASE WHEN sessions_after_cart.after_cart_id IS NOT NULL THEN 1 ELSE 0 END AS clicked_after_cart,
-	 -- cart_sessions_w_orders.cart_order_id,
-	 CASE WHEN cart_sessions_w_orders.cart_order_id IS NOT NULL THEN 1 ELSE 0 END AS ordered,
-	 cart_sessions_w_orders.items_purchased,
-	 cart_sessions_w_orders.price_usd
-FROM 
-	 sessions_on_cart
-LEFT JOIN 
-	 sessions_after_cart
-	 ON sessions_after_cart.after_cart_id = sessions_on_cart.cart_session_id
-LEFT JOIN 
-	 cart_sessions_w_orders
-	 ON cart_sessions_w_orders.cart_order_id = sessions_on_cart.cart_session_id
-) AS tableAlias
-
-GROUP BY 1;
-
-RESULT:
-
-time_period		cart_sessions	clickthroughs	cart_ctr	products_per_order	avg_order_value		rev_per_cart_session
-A. Pre_Cross_Sell	1830		1229		0.6716		1.0000			51.4164			18.3188
-B. Post_Cross_Sell	1975		1351		0.6841		1.0447			54.2518			18.4319
-
-
--- Looks like clickthrough rate from the /cart page did not go down, and products per order, average order value, and revenue per /cart session are all up since the addition of cross-selling
-
-
-/* Assignment 5.6 : Product Portfolio Expansion. Received: 2014-01-12
-CEO: On December 12, a third product was launched targeting the birthday gift market (Birthday Bear). 
-Run a pre-post analysis comparing the month before vs. the month after, in terms of 
-session-to-order conversion rate, AOV, products per order, and revenue per session */
-
-SELECT
-	 CASE
-	 	WHEN website_sessions.created_at < '2013-12-12' THEN 'A. Pre_Birthday_Bear'
-	 	WHEN website_sessions.created_at >= '2013-12-12' THEN 'B. Post_Birthday_Bear'
-	 END AS time_period,
-	 -- COUNT(DISTINCT website_session_id) AS sessions,
-	 -- COUNT(DISTINCT order_id) AS orders,
-	 COUNT(DISTINCT order_id) / COUNT(DISTINCT website_sessions.website_session_id) AS conv_rate,
-	 ROUND((SUM(price_usd) / COUNT(DISTINCT order_id)), 4) AS avg_order_value,
-	 SUM(items_purchased) / COUNT(DISTINCT order_id) AS products_per_order,
-	 ROUND((SUM(price_usd) / COUNT(DISTINCT website_sessions.website_session_id)), 4) AS rev_per_session
-FROM 
-	 website_sessions
-LEFT JOIN 
-	 orders
-	 ON orders.website_session_id = website_sessions.website_session_id
-WHERE 
-	 website_sessions.created_at BETWEEN '2013-11-12' AND '2014-01-12'
-GROUP BY 1;
-
-RESULT:
-
-time_period		conv_rate	avg_order_value		products_per_order	rev_per_session
-A. Pre_Birthday_Bear	0.0608		54.2265			1.0464			3.2987
-B. Post_Birthday_Bear	0.0702		56.9313			1.1234			3.9988
-
--- Looks like adding a third product has been good for the business, all metrics are up
-
-
-/* Assignment 5.7 : Analyzing Product Refund Rates. Received: 2014-10-14
-CEO: The Mr Fuzzy supplier had some quality issues that weren't corrected until September 2013, 
-then a major problem when the bears' arms were falling off in August/September 2014. 
-A new supplier was contracted on September 16, 2014. Pull monthly product refund rates, by product, 
-and confirm whether quality issues have been fixed. */
-
-SELECT
-	 YEAR(order_items.created_at) AS yr,
-	 MONTH(order_items.created_at) AS mo,
-
-	 COUNT(DISTINCT CASE WHEN product_id = 1 THEN order_items.order_item_id ELSE NULL END) AS p1_orders,
-	 COUNT(DISTINCT CASE WHEN order_items.product_id = 1 THEN order_item_refund_id ELSE NULL END) /
-		COUNT(DISTINCT CASE WHEN product_id = 1 THEN order_items.order_item_id ELSE NULL END) AS p1_refund_rt,
-        
-	 COUNT(DISTINCT CASE WHEN product_id = 2 THEN order_items.order_item_id ELSE NULL END) AS p2_orders,    
-	 COUNT(DISTINCT CASE WHEN order_items.product_id = 2 THEN order_item_refund_id ELSE NULL END) /
-		COUNT(DISTINCT CASE WHEN product_id = 2 THEN order_items.order_item_id ELSE NULL END) AS p2_refund_rt,
-        
-	 COUNT(DISTINCT CASE WHEN product_id = 3 THEN order_items.order_item_id ELSE NULL END) AS p3_orders,
-	 COUNT(DISTINCT CASE WHEN order_items.product_id = 3 THEN order_item_refund_id ELSE NULL END) /
-		COUNT(DISTINCT CASE WHEN product_id = 3 THEN order_items.order_item_id ELSE NULL END) AS p3_refund_rt,
-        
-	 COUNT(DISTINCT CASE WHEN product_id = 4 THEN order_items.order_item_id ELSE NULL END) AS p4_orders,
-	 COUNT(DISTINCT CASE WHEN order_items.product_id = 4 THEN order_item_refund_id ELSE NULL END) /
-		COUNT(DISTINCT CASE WHEN product_id = 4 THEN order_items.order_item_id ELSE NULL END) AS p4_refund_rt
-FROM 
-	 order_items
-LEFT JOIN 
-	 order_item_refunds
-	 ON order_item_refunds.order_item_id = order_items.order_item_id
-WHERE 
-	 order_items.created_at <= '2014-10-14'
-GROUP BY 1, 2;
-	
--- Refund rates for Mr. Fuzzy did go down after the initial improvements in September 2013 but became especially bad in August and September 2014 as expected (13-14%)
--- New supplier is better so far and refund rates are lower overall across all products
 
 ------------------------------------------ SECTION SIX : USER ANALYSIS --------------------------------------------------
 
