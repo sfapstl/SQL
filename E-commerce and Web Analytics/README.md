@@ -26,7 +26,7 @@ Complete overview of the database schema:
 
 ## Website Analytics
 
-The entire code for SQL Project is available in [E-commerce and Website Analytics Project](https://github.com/sfapstl/SQL/blob/main/E-commerce%20and%20Web%20Analytics/E-commerce%20and%20Web%20Analytics%20Project.sql). 
+The entire code for this SQL Project is available in [E-commerce and Website Analytics Project](https://github.com/sfapstl/SQL/blob/main/E-commerce%20and%20Web%20Analytics/E-commerce%20and%20Web%20Analytics%20Project.sql). 
 
 Below are code extracts from each of the five sections for perusal.
 
